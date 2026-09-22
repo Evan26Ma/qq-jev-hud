@@ -41,8 +41,14 @@ public sealed class OverlayLayoutEngine
                 continue;
             }
 
-            var marker = new ScreenRect(Math.Min(item.Message.Bounds.Right + Gap, chatBounds.Right - 22), item.Message.Bounds.Top, 18, 18);
-            result.Add(Layout(item, marker, CardPlacementKind.Marker));
+            // No room for a card: outline the message itself, so it is still obvious which message
+            // carries a judgment (a bare dot told the user nothing about what was being read).
+            var outline = new ScreenRect(
+                item.Message.Bounds.Left - 4,
+                item.Message.Bounds.Top - 4,
+                Math.Max(44, item.Message.Bounds.Width + 8),
+                Math.Max(24, item.Message.Bounds.Height + 8));
+            result.Add(Layout(item, outline, CardPlacementKind.Marker));
         }
 
         return result;

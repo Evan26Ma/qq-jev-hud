@@ -21,6 +21,7 @@ public sealed record AppSettings
     public bool ShowIntent { get; set; } = true;
     public bool ShowRisk { get; set; } = true;
     public bool ShowAdvice { get; set; } = true;
+    public bool ShowRecognitionFrame { get; set; } = true;
     public double CardOpacity { get; set; } = 1.0;
     public int MaxCards { get; set; } = 4;
 

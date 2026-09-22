@@ -18,6 +18,7 @@ public static class Preview
         var area = new ScreenRect(60, 60, 940, 720);
         var layouts = new OverlayLayoutEngine().Arrange(new[] { (message, card) }, area);
         overlay.ShowLayouts(area, 96, layouts, showOptions: true, showRisk: true, showAdvice: true);
+        overlay.ShowRecognitionFrame(new ScreenRect(150, 130, 700, 470), 96);
     }
 
     /// <summary>Shows a card with its replies expanded, in a small stand-in chat area.</summary>
@@ -30,6 +31,7 @@ public static class Preview
         var area = new ScreenRect(60, 60, 940, 720);
         var layouts = new OverlayLayoutEngine().Arrange(new[] { (message, card) }, area);
         overlay.ShowLayouts(area, 96, layouts, showOptions: true, showRisk: true, showAdvice: true);
+        overlay.ShowRecognitionFrame(new ScreenRect(150, 130, 700, 470), 96);
 
         var choices = new[]
         {

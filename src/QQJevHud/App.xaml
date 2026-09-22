@@ -10,11 +10,13 @@
     <Color x:Key="BrandColor">#FF3B82F6</Color>
     <Color x:Key="BarTrackColor">#FFE3E6EA</Color>
     <Color x:Key="BarFillMutedColor">#FF8B9098</Color>
+    <Color x:Key="AccentGreenColor">#FF2E8B57</Color>
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" />
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
     <SolidColorBrush x:Key="BrandBrush" Color="{StaticResource BrandColor}" />
+    <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreenColor}" />
     <SolidColorBrush x:Key="BarTrackBrush" Color="{StaticResource BarTrackColor}" />
     <SolidColorBrush x:Key="BarFillBrush" Color="{StaticResource BrandColor}" />
     <SolidColorBrush x:Key="BarFillMutedBrush" Color="{StaticResource BarFillMutedColor}" />

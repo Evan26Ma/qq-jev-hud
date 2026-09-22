@@ -51,4 +51,24 @@ public sealed class CardQuoteTests
 
         Assert.True(CardMetrics.HeightFor(card) >= CardMetrics.BaseHeight + CardMetrics.QuoteHeight);
     }
+
+    [Fact]
+    public void Arrange_TightSpace_OutlinesTheMessageInsteadOfUsingATinyDot()
+    {
+        var card = new DecisionCard("a", "主题", "问题", Array.Empty<DecisionOption>(), 3, "低风险", "建议", 80, AnalysisState.Ready);
+        var message = new ChatMessage("a", "s", MessageDirection.Incoming, "我是做题", .9,
+            new ScreenRect(40, 40, 160, 30), "零");
+
+        // A chat area barely larger than the message: no room for a card anywhere.
+        var layouts = new OverlayLayoutEngine().Arrange(new[] { (message, card) }, new ScreenRect(0, 0, 240, 120));
+
+        var marker = Assert.Single(layouts, layout => layout.Placement == CardPlacementKind.Marker);
+        // The outline wraps the message (plus padding) rather than being an 18x18 dot.
+        Assert.True(marker.Bounds.Width > 100, $"expected an outline, got width {marker.Bounds.Width}");
+        Assert.True(marker.Bounds.Height > 20, $"expected an outline, got height {marker.Bounds.Height}");
+        Assert.True(marker.Bounds.Left <= message.Bounds.Left);
+        Assert.True(marker.Bounds.Top <= message.Bounds.Top);
+        Assert.True(marker.Bounds.Right >= message.Bounds.Right);
+        Assert.True(marker.Bounds.Bottom >= message.Bounds.Bottom);
+    }
 }

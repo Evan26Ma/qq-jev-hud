@@ -112,7 +112,8 @@
                         <TextBlock Text="卡片显示" Style="{StaticResource SectionHeader}"/>
                         <CheckBox x:Name="ShowIntent" Content="显示意图判断（概率分布）" Margin="0,0,0,4"/>
                         <CheckBox x:Name="ShowRisk" Content="显示关系风险" Margin="0,0,0,4"/>
-                        <CheckBox x:Name="ShowAdvice" Content="显示回应建议" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="ShowAdvice" Content="显示回应建议" Margin="0,0,0,4"/>
+                        <CheckBox x:Name="ShowRecognitionFrameToggle" Content="用绿框标出正在识别的区域（关闭后不显示）" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="卡片透明度" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                             <Slider x:Name="CardOpacity" Width="200" Minimum="0.3" Maximum="1" ValueChanged="CardOpacityChanged" VerticalAlignment="Center"/>

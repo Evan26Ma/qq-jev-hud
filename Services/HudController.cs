@@ -207,6 +207,12 @@ public sealed class HudController : IAsyncDisposable
             var calibration = _calibrationStore.Load();
             var historyBounds = calibration.ToScreenRect(frame.WindowBounds);
             var history = BitmapTools.Crop(frame.Image, frame.WindowBounds, historyBounds);
+
+            // Show what is actually being read: the header while identifying the session, then the
+            // calibrated chat region that OCR runs over.
+            if (_settings.ShowRecognitionFrame && qqIsForeground) _overlay.ShowRecognitionFrame(historyBounds, frame.Dpi);
+            else _overlay.HideRecognitionFrame();
+
             var signature = BitmapTools.FrameSignature(history);
             if (!_frameDebouncer.Observe(signature, DateTimeOffset.UtcNow))
             {
@@ -225,8 +231,11 @@ public sealed class HudController : IAsyncDisposable
                 ResetSession();
                 _sessionId = newSessionId;
                 SetStatus("已识别当前会话；正在建立消息基线…");
+                // While identifying, point the frame at the header being read.
+                if (_settings.ShowRecognitionFrame && qqIsForeground) _overlay.ShowRecognitionFrame(headerBounds, frame.Dpi);
                 _contactNotes = await LoadContactNotesAsync(frame);
                 _contactName = await LoadSessionTitleAsync(frame);
+                if (_settings.ShowRecognitionFrame && qqIsForeground) _overlay.ShowRecognitionFrame(historyBounds, frame.Dpi);
             }
 
             IReadOnlyList<OcrLine> rawLines;

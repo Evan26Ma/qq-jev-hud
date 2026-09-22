@@ -89,6 +89,15 @@
     </DataTemplate>
   </Window.Resources>
   <Grid MouseLeftButtonUp="OnOverlayClick">
+    <!-- Green frame around the region currently being read, so it is obvious what the app looks at. -->
+    <Canvas>
+      <Border x:Name="RecognitionFrame" Visibility="Collapsed" IsHitTestVisible="False"
+              BorderBrush="{StaticResource AccentGreenBrush}" BorderThickness="2" CornerRadius="6" />
+      <Border x:Name="RecognitionLabel" Visibility="Collapsed" IsHitTestVisible="False"
+              Background="{StaticResource AccentGreenBrush}" CornerRadius="0,0,4,0" Padding="7,2">
+        <TextBlock Text="正在识别此区域" FontSize="11" FontWeight="SemiBold" Foreground="White" />
+      </Border>
+    </Canvas>
     <ItemsControl ItemsSource="{Binding Cards}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
@@ -155,7 +164,10 @@
                            Visibility="{Binding HasStatusHint, Converter={StaticResource BoolToVisibility}}" />
               </Grid>
             </Border>
-            <Border Width="18" Height="18" CornerRadius="9" Background="{Binding RiskBrush}" Visibility="{Binding IsMarker, Converter={StaticResource BoolToVisibility}}" ToolTip="Jev 判断已折叠" />
+            <!-- No room for a card: outline the judged message in green instead of a bare dot. -->
+            <Border x:Name="MessageOutline" BorderBrush="{StaticResource AccentGreenBrush}" BorderThickness="2"
+                    CornerRadius="6" Visibility="{Binding IsMarker, Converter={StaticResource BoolToVisibility}}"
+                    ToolTip="这条消息已有判断（点卡片区域可展开回复）" />
           </Grid>
         </DataTemplate>
       </ItemsControl.ItemTemplate>

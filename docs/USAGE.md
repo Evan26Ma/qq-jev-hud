@@ -284,6 +284,15 @@ ranks above "brushed off, 70%".
 **Click any option** → the text goes into QQ's input box. It **never sends**. The card shows the result
 underneath; if QQ can't be focused it **falls back to copying** and tells you to paste with `Ctrl+V`.
 
+### The green frame shows what is being read
+
+The region currently being read is outlined with a **green frame** labelled 「正在识别此区域」, so it is
+never a black box.
+
+- While identifying the session the frame sits on the header, then moves to the chat area
+- When there is no room for a card, **the message itself is outlined in green** (far clearer than the old dot)
+- Turn it off under Settings → 卡片显示 → 「用绿框标出正在识别的区域」
+
 ### The card travels with the chat window
 
 Cards are **pinned to the QQ window**: move or resize QQ and they follow, instead of being left behind.

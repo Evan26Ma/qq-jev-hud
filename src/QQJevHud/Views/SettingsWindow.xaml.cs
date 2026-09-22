@@ -42,6 +42,7 @@ public partial class SettingsWindow : Window
         ShowIntent.IsChecked = s.ShowIntent;
         ShowRisk.IsChecked = s.ShowRisk;
         ShowAdvice.IsChecked = s.ShowAdvice;
+        ShowRecognitionFrameToggle.IsChecked = s.ShowRecognitionFrame;
         CardOpacity.Value = s.CardOpacity;
         MaxCards.SelectedIndex = Math.Clamp(s.MaxCards, 1, 8) - 1;
         RedactSensitive.IsChecked = s.RedactSensitive;
@@ -61,6 +62,7 @@ public partial class SettingsWindow : Window
         ShowIntent = ShowIntent.IsChecked == true,
         ShowRisk = ShowRisk.IsChecked == true,
         ShowAdvice = ShowAdvice.IsChecked == true,
+        ShowRecognitionFrame = ShowRecognitionFrameToggle.IsChecked == true,
         CardOpacity = CardOpacity.Value,
         MaxCards = MaxCards.SelectedIndex >= 0 ? MaxCards.SelectedIndex + 1 : 4,
         RedactSensitive = RedactSensitive.IsChecked == true,

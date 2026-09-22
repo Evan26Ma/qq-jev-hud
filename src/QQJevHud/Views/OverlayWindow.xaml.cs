@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using QQJevHud.Core;
 using QQJevHud.Services;
+using Canvas = System.Windows.Controls.Canvas;
 
 namespace QQJevHud.Views;
 
@@ -60,8 +62,8 @@ public partial class OverlayWindow : Window
                 Card = layout.Card,
                 Left = (layout.Bounds.Left - windowBounds.Left) / ScaleOf(dpi),
                 Top = (layout.Bounds.Top - windowBounds.Top) / ScaleOf(dpi),
-                Width = layout.Placement == CardPlacementKind.Marker ? 18 : layout.Bounds.Width,
-                BaseHeight = layout.Placement == CardPlacementKind.Marker ? 18 : layout.Bounds.Height,
+                Width = layout.Bounds.Width,
+                BaseHeight = layout.Bounds.Height,
                 IsMarker = layout.Placement == CardPlacementKind.Marker,
                 ShowOptions = showOptions,
                 ShowRisk = showRisk,
@@ -69,8 +71,7 @@ public partial class OverlayWindow : Window
                 MessageText = layout.MessageText,
                 Sender = layout.Sender
             };
-            if (!model.IsMarker) model.MarkWaiting();
-            _cache[layout.Card.MessageId] = model;
+            if (!model.IsMarker) model.MarkWaiting();            _cache[layout.Card.MessageId] = model;
             ordered.Add(model);
         }
 
@@ -124,6 +125,52 @@ public partial class OverlayWindow : Window
     }
 
     private static double ScaleOf(uint dpi) => Math.Max(0.75, dpi / 96d);
+
+    /// <summary>
+    /// Draws the green frame around the region being read (the calibrated chat area, or the header
+    /// while the session is being identified). Pass null to hide it.
+    /// </summary>
+    public void ShowRecognitionFrame(ScreenRect? region, uint dpi)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.InvokeAsync(() => ShowRecognitionFrame(region, dpi));
+            return;
+        }
+        if (region is not { } rect || rect.IsEmpty)
+        {
+            RecognitionFrame.Visibility = Visibility.Collapsed;
+            RecognitionLabel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var scale = ScaleOf(dpi);
+        var left = (rect.Left - Left * scale) / scale;
+        var top = (rect.Top - Top * scale) / scale;
+        var width = rect.Width / scale;
+        var height = rect.Height / scale;
+
+        RecognitionFrame.Width = Math.Max(1, width);
+        RecognitionFrame.Height = Math.Max(1, height);
+        Canvas.SetLeft(RecognitionFrame, left);
+        Canvas.SetTop(RecognitionFrame, top);
+        RecognitionFrame.Visibility = Visibility.Visible;
+
+        RecognitionLabel.Visibility = Visibility.Visible;
+        Canvas.SetLeft(RecognitionLabel, left);
+        // Keep the label on screen when the region starts at the very top.
+        Canvas.SetTop(RecognitionLabel, Math.Max(0, top - 19));
+    }
+
+    public void HideRecognitionFrame()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.InvokeAsync(HideRecognitionFrame);
+            return;
+        }
+        RecognitionFrame.Visibility = Visibility.Collapsed;
+        RecognitionLabel.Visibility = Visibility.Collapsed;
+    }
 
     public void ClearCards()
     {

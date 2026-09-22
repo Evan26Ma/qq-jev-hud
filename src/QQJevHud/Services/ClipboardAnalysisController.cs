@@ -15,7 +15,7 @@ public sealed class ClipboardAnalysisController : IAsyncDisposable
     private readonly DispatcherTimer _timer;
     private readonly IOcrEngine _ocr = new OcrWorkerClient();
     private readonly IChatDetector _detector = new ChatDetector();
-    private readonly IDecisionProvider _decisions = new MockDecisionProvider();
+    private readonly IDecisionProvider _decisions = DecisionProviderFactory.Create(new SettingsStore().Load());
     private string? _lastFingerprint;
     private bool _processing;
 

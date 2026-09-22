@@ -8,10 +8,15 @@
     <Color x:Key="SecondaryTextColor">#FF646A73</Color>
     <Color x:Key="BorderColor">#FFD9DCE1</Color>
     <Color x:Key="BrandColor">#FF3B82F6</Color>
+    <Color x:Key="BarTrackColor">#FFE3E6EA</Color>
+    <Color x:Key="BarFillMutedColor">#FF8B9098</Color>
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" />
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="BarTrackBrush" Color="{StaticResource BarTrackColor}" />
+    <SolidColorBrush x:Key="BarFillBrush" Color="{StaticResource BrandColor}" />
+    <SolidColorBrush x:Key="BarFillMutedBrush" Color="{StaticResource BarFillMutedColor}" />
     <Style TargetType="Button">
       <Setter Property="Padding" Value="12,7" />
       <Setter Property="Margin" Value="0,0,8,0" />

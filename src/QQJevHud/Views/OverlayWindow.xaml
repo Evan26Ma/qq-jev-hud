@@ -8,6 +8,9 @@
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+    <local:ProbabilityToWidthConverter x:Key="BarWidth" FullWidth="62" />
+    <!-- Bar brushes (BarTrackBrush / BarFillBrush / BarFillMutedBrush) live in App.xaml so the
+         view-model can resolve them too; a window-only resource would break the card silently. -->
     <Style x:Key="CardBorder" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -27,6 +30,36 @@
         </EventTrigger>
       </Style.Triggers>
     </Style>
+    <!-- One dimension row: label (★ when highlighted) plus its top two options with probability bars. -->
+    <DataTemplate x:Key="DimensionTemplate" DataType="{x:Type local:DimensionRowViewModel}">
+      <StackPanel Margin="0,0,0,5">
+        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}">
+          <Run Text="{Binding Star, Mode=OneWay}" /><Run Text="{Binding Label, Mode=OneWay}" />
+        </TextBlock>
+        <ItemsControl ItemsSource="{Binding Options}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Grid Margin="0,1">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Probability, StringFormat={}{0}%}" FontSize="11" TextAlignment="Right"
+                           Margin="0,0,6,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                <Grid Grid.Column="2" Width="62" Height="6" VerticalAlignment="Center">
+                  <Border Background="{StaticResource BarTrackBrush}" CornerRadius="3" />
+                  <Border CornerRadius="3" HorizontalAlignment="Left"
+                          Background="{Binding FillBrush}"
+                          Width="{Binding Probability, Converter={StaticResource BarWidth}}" />
+                </Grid>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
   </Window.Resources>
   <Grid IsHitTestVisible="False">
     <ItemsControl ItemsSource="{Binding Cards}" IsHitTestVisible="False" Focusable="False">
@@ -47,12 +80,21 @@
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="{Binding Card.Topic, StringFormat=Jev · {0}}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" />
-                <TextBlock Grid.Row="1" Margin="0,4,0,6" Text="{Binding Card.Question}" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource PrimaryTextBrush}" />
-                <ItemsControl Grid.Row="2" ItemsSource="{Binding Card.Options}">
+                <!-- Quoted message: identifies which message this card judges when the chat scrolls. -->
+                <Border Grid.Row="1" Margin="0,6,0,0" Padding="8,5" CornerRadius="4"
+                        Background="#FFF0F2F5" BorderThickness="3,0,0,0" BorderBrush="{StaticResource BorderBrush}"
+                        Visibility="{Binding HasQuote, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock TextWrapping="Wrap" MaxHeight="36" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}">
+                    <Run Text="{Binding SenderPrefix, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" /><Run Text="{Binding QuoteText, Mode=OneWay}" />
+                  </TextBlock>
+                </Border>
+                <TextBlock Grid.Row="2" Margin="0,6,0,6" Text="{Binding Card.Question}" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource PrimaryTextBrush}" />
+                <ItemsControl Grid.Row="3" ItemsSource="{Binding Card.Options}" Visibility="{Binding ShowPlainOptions, Converter={StaticResource BoolToVisibility}}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <Grid Margin="0,1">
@@ -63,10 +105,12 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Grid Grid.Row="3" Margin="0,8,0,0">
+                <ItemsControl Grid.Row="3" ItemsSource="{Binding Dimensions}" Visibility="{Binding ShowDimensions, Converter={StaticResource BoolToVisibility}}"
+                              ItemTemplate="{StaticResource DimensionTemplate}" />
+                <Grid Grid.Row="4" Margin="0,8,0,0">
                   <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Card.RecommendedAction, StringFormat=建议：{0}}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Grid.Column="1" Text="{Binding RiskText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding RiskBrush}" />
+                  <TextBlock Text="{Binding Card.RecommendedAction, StringFormat=建议：{0}}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Visibility="{Binding ShowAdvice, Converter={StaticResource BoolToVisibility}}" />
+                  <TextBlock Grid.Column="1" Text="{Binding RiskText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding RiskBrush}" Visibility="{Binding ShowRisk, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
               </Grid>
             </Border>

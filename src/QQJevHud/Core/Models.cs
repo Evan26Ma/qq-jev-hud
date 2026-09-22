@@ -27,11 +27,18 @@ public sealed record ChatMessage(
     MessageDirection Direction,
     string Text,
     double Confidence,
-    ScreenRect Bounds);
+    ScreenRect Bounds,
+    string? Sender = null);
 
 public enum AnalysisState { Loading, Ready, LowConfidence, Failed, Unavailable }
 
 public sealed record DecisionOption(string Label, int Probability);
+
+/// <summary>
+/// One labeled judgment with its distribution (e.g. 情绪状态 / 真实意图 / 怎么回). Highlighted
+/// dimensions are the ones worth the user's attention first (marked with ★ in the card).
+/// </summary>
+public sealed record JudgmentDimension(string Label, IReadOnlyList<DecisionOption> Options, bool Highlight = false);
 
 public sealed record DecisionCard(
     string MessageId,
@@ -42,7 +49,15 @@ public sealed record DecisionCard(
     string RiskLabel,
     string RecommendedAction,
     int Confidence,
-    AnalysisState State);
+    AnalysisState State)
+{
+    /// <summary>Rich dimensions (潜台词 / 情绪 / 意图 / 关系 / 期待 / 怎么回). Empty = show Options only.</summary>
+    public IReadOnlyList<JudgmentDimension> Dimensions { get; init; } = Array.Empty<JudgmentDimension>();
+
+    /// <summary>Dimensions ordered for display: highlighted first, capped for a readable card.</summary>
+    public IReadOnlyList<JudgmentDimension> VisibleDimensions(int max = 5) =>
+        Dimensions.OrderByDescending(dimension => dimension.Highlight).Take(max).ToArray();
+}
 
 public enum CardPlacementKind { BelowMessage, BesideMessage, SideRail, Marker }
 
@@ -50,7 +65,15 @@ public sealed record CardLayout(
     string MessageId,
     ScreenRect Bounds,
     CardPlacementKind Placement,
-    DecisionCard Card);
+    DecisionCard Card)
+{
+    /// <summary>The message being judged — shown on the card so it can be matched to the chat
+    /// even after the group scrolls on.</summary>
+    public string MessageText { get; init; } = string.Empty;
+
+    /// <summary>Who sent it (group speaker, or the contact in a 1:1 chat); null when unknown.</summary>
+    public string? Sender { get; init; }
+}
 
 public sealed record CapturedFrame(
     System.Windows.Media.Imaging.BitmapSource Image,

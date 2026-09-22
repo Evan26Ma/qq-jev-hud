@@ -25,7 +25,13 @@ public partial class OverlayWindow : Window
         NativeMethods.SetWindowLongPtr(handle, NativeMethods.GwlExStyle, new IntPtr(style));
     }
 
-    public void ShowLayouts(ScreenRect windowBounds, uint dpi, IReadOnlyList<CardLayout> layouts)
+    /// <summary>
+    /// Rebuilds the card set. One card per judgment, positioned beside its message — but because a
+    /// fast-moving group scrolls out from under the overlay, each card also quotes the message it
+    /// judges (and who said it) so it can still be matched to the chat.
+    /// </summary>
+    public void ShowLayouts(ScreenRect windowBounds, uint dpi, IReadOnlyList<CardLayout> layouts,
+        bool showOptions, bool showRisk, bool showAdvice)
     {
         var scale = Math.Max(0.75, dpi / 96d);
         Left = windowBounds.Left / scale;
@@ -40,9 +46,14 @@ public partial class OverlayWindow : Window
                 Card = layout.Card,
                 Left = (layout.Bounds.Left - windowBounds.Left) / scale,
                 Top = (layout.Bounds.Top - windowBounds.Top) / scale,
-                Width = layout.Placement == CardPlacementKind.Marker ? 18 : 280,
-                Height = layout.Placement == CardPlacementKind.Marker ? 18 : 156,
-                IsMarker = layout.Placement == CardPlacementKind.Marker
+                Width = layout.Placement == CardPlacementKind.Marker ? 18 : layout.Bounds.Width,
+                Height = layout.Placement == CardPlacementKind.Marker ? 18 : layout.Bounds.Height,
+                IsMarker = layout.Placement == CardPlacementKind.Marker,
+                ShowOptions = showOptions,
+                ShowRisk = showRisk,
+                ShowAdvice = showAdvice,
+                MessageText = layout.MessageText,
+                Sender = layout.Sender
             });
         }
         if (!IsVisible && Cards.Count > 0) Show();
@@ -79,7 +90,10 @@ public partial class OverlayWindow : Window
             Top = Math.Clamp(windowBounds.Height * 0.14, 96d, 132d) / scale,
             Width = 280,
             Height = 112,
-            IsMarker = false
+            IsMarker = false,
+            ShowOptions = true,
+            ShowRisk = true,
+            ShowAdvice = true
         });
         if (!IsVisible) Show();
     }

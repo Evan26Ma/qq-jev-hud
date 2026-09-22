@@ -3,14 +3,22 @@
 > 无侵入的 QQ 聊天**意图 / 风险实时悬浮卡**，由 [TypeSafe Jev](https://typesafe.ai)（System One 结构化判断模型）驱动。
 >
 > [English](README.md) · **中文**
+>
+> 📖 **[完整使用说明](docs/USAGE.zh-CN.md)** —— 安装、配置 Key、看懂卡片、候选回复、话术、排查，都在这一篇。
 
-QQ Jev HUD 是一个面向 Windows QQ 的**只读**伴生程序。它观察当前打开的聊天，在出现新的对方消息时读取最近可见对话，调用 [TypeSafe Jev](https://typesafe.ai) 做结构化判断（意图、关系风险、是否期待认真回应），并把结果显示为锚定在对应消息旁的灰色注释卡——就像"每条消息下面跟一段 Jev 判断"。它**不生成回复、不自动输入、不发送任何消息**。
+QQ Jev HUD 是一个面向 Windows QQ 的**只读**伴生程序。它观察当前打开的聊天，在出现新的对方消息时读取最近可见对话，调用 [TypeSafe Jev](https://typesafe.ai)（或任何 OpenAI 兼容 LLM）做结构化判断，并把结果显示为锚定在对应消息旁的悬浮卡。
+
+更重要的是，它不只告诉你"对方想干嘛"——还会**按你选的话术直接把候选回复写出来**，你挑一条**复制或填入 QQ 输入框**，**发送永远由你决定**。它**不会替你发送任何消息**，也从不修改 QQ。
 
 ## 特性
 
+- **话我帮你想，发送你来定** —— 新消息一到，按你选的话术（高情商、自然接话、稳如老狗、拒绝加班、阴阳怪气……）自动写出候选回复，一键**复制**或**填入 QQ 输入框**，是否发送永远由你决定。
 - **无侵入** —— 不注入、不 Hook、不修改 QQ，不读取 QQ 数据库，只读取可见窗口。
 - **本地 OCR** —— 用本地 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 识别可见消息；截图只在内存中处理，不落盘。
-- **实时结构化判断** —— 逐消息给出意图、关系风险（1–10）、是否期待认真回应，附带校准过的概率与置信度。
+- **富维度判断卡** —— 卡片刻着**是谁说了什么**（引用原消息，群聊时带发送者昵称），再给出潜台词、情绪状态、真实意图（★）、语气亲疏、对方期待、关系状态、怎么回（★），每项带概率条；群聊刷屏、卡片与消息错位时，靠引用行也能对上号。
+- **自带判断引擎** —— 可用 TypeSafe Jev，也可用任何 OpenAI 兼容 LLM（OpenAI / DeepSeek / Ollama / vLLM…）；两者输出的卡片与候选完全一致。
+- **关系模式** —— 「通用（朋友/同事/群聊）」与「亲密关系（情侣/夫妻）」两套判断侧重。
+- **联系人背景卡** —— `notes/<联系人>.md` 写下你们的约定、雷区和近况，保存即生效，判断与回复都会带上它。
 - **点击穿透悬浮层** —— 卡片是透明、置顶、鼠标穿透的覆盖层，不抢焦点、不挡输入框。
 - **隐私优先** —— 不保存聊天记录；API Key 存在 Windows 凭据管理器，绝不进仓库；日志只记匿名状态码。
 - **离线 Mock 模式** —— `QQJEVHUD_MOCK=1` 用本地确定性判断跑通全流程（无需 Key、不联网）。
@@ -42,14 +50,15 @@ QQ Jev HUD 是一个面向 Windows QQ 的**只读**伴生程序。它观察当�
 ### 安装
 
 ```powershell
-git clone https://github.com/evan26ma/qq-jev-hud.git
+git clone https://github.com/Evan26Ma/qq-jev-hud.git
 cd qq-jev-hud
 .\setup.ps1      # 安装 .NET 8 SDK、项目专用 Python 环境和 PaddleOCR
+.\create-shortcut.ps1   # 可选：建桌面快捷方式
 ```
 
-### 配置 TypeSafe API Key（可选，仅真实判断需要）
+### 配置判断引擎与 API Key
 
-Key 存放在 **Windows 凭据管理器**（目标名 `QQJevHud.TypeSafe.ApiKey`），**不会**写入仓库、源码、日志或配置文件。
+最简单：托盘菜单 → **设置…**，选择判断引擎（Jev / OpenAI 兼容 LLM / Mock），填写 Base URL、模型、API Key，并调卡片显示与隐私。Key 只存 **Windows 凭据管理器**（`QQJevHud.TypeSafe.ApiKey` / `QQJevHud.OpenAI.ApiKey`），**绝不**写入仓库、源码、日志或配置文件。
 
 ```powershell
 # 方式一：用 cmdkey 写入凭据管理器
@@ -68,6 +77,22 @@ echo '<你的 TypeSafe API Key>' | .\src\QQJevHud\bin\Debug\net8.0-windows10.0.1
 ```
 
 打开一个 QQ 聊天窗口，用托盘图标开始 / 暂停分析。`Ctrl + Alt + J` 暂停或恢复。
+
+收到新消息后，QQ 右侧会浮出**富维度判断卡**，同时弹出**候选回复**面板（托盘「候选回复…」随时可打开）。
+
+完整图文说明见 **[docs/USAGE.zh-CN.md](docs/USAGE.zh-CN.md)**：
+[看懂判断卡](docs/USAGE.zh-CN.md#5-看懂判断卡) ·
+[候选回复与话术](docs/USAGE.zh-CN.md#6-候选回复) ·
+[联系人背景卡](docs/USAGE.zh-CN.md#7-联系人背景卡) ·
+[排查表](docs/USAGE.zh-CN.md#11-排查) ·
+[常见问题](docs/USAGE.zh-CN.md#12-常见问题)
+
+### 预览界面（不需要 QQ）
+
+```powershell
+.\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe --preview-card     # 富维度卡片
+.\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe --preview-replies  # 候选回复面板
+```
 
 ## 隐私与安全
 

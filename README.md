@@ -3,17 +3,25 @@
 > A non-intrusive, real-time **intent & risk HUD** for your QQ chats, powered by [TypeSafe Jev](https://typesafe.ai) (the System One structured-judgment model).
 >
 > **English** · [中文](README.zh-CN.md)
+>
+> 📖 **[Full user guide](docs/USAGE.md)** — install, API keys, reading the card, candidate replies, tones, troubleshooting.
 
-QQ Jev HUD is a **read-only** companion app for Windows QQ. It watches the currently open chat, and when a new incoming message appears it reads the recent visible conversation, asks [TypeSafe Jev](https://typesafe.ai) to make structured judgments (intent, relationship risk, whether a serious reply is expected), and renders the result as a small grey annotation card anchored next to that message — like "a Jev verdict under each message." It **never generates replies, never types into QQ, and never sends anything**.
+QQ Jev HUD is a **read-only** companion app for Windows QQ. It watches the currently open chat and, when a new incoming message appears, reads the recent visible conversation and asks [TypeSafe Jev](https://typesafe.ai) (or any OpenAI-compatible LLM) for structured judgments — rendered as a card anchored beside the message.
+
+More importantly, it doesn't stop at telling you what the other person means: it **drafts candidate replies in the tones you choose**, and you **copy one or fill it into QQ** — **sending is always your call**. It never sends anything for you and never modifies QQ.
 
 ## Highlights
 
+- **"We draft it, you send it"** — for each new message it writes candidate replies per tone (高情商 / natural / boundary-setting / sarcastic …), each with **copy** and **fill-into-QQ** actions. Sending stays in your hands.
 - **Non-intrusive** — no injection, no hooking, no modification of QQ, no access to QQ's database. It only reads the visible window.
 - **Local OCR** — visible text is read with local [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR); screenshots stay in memory and are never written to disk.
-- **Real-time structured judgments** — per-message intent, relationship risk (1–10), and whether a serious reply is expected, with calibrated probabilities & confidence.
-- **Click-through overlay** — cards are a transparent, topmost, mouse-transparent layer that never steals focus or blocks the input box.
-- **Privacy first** — no chat history is stored; your API key lives in Windows Credential Manager and is never committed; logs carry only anonymous state codes.
-- **Offline mock mode** — run with `QQJEVHUD_MOCK=1` for deterministic local judgments (no key, no network).
+- **Rich judgment card** — each card quotes **who said what** (the original message, with the speaker's name in group chats), then gives subtext, emotion, real intent (★), tone distance, what they expect, relationship state, and how to reply (★) with probability bars. The quote keeps the card identifiable even when a busy group scrolls past it.
+- **Bring your own engine** — TypeSafe Jev **or** any OpenAI-compatible LLM (OpenAI / DeepSeek / Ollama / vLLM…); cards and candidates look identical either way.
+- **Relationship modes** — a general profile (friends/colleagues/groups) and an intimate-relationship profile.
+- **Contact background cards** — drop `notes/<contact>.md` with your agreements, sore spots and recent context; it takes effect on save.
+- **Click-through overlay** — cards are transparent, topmost and mouse-transparent; they never steal focus.
+- **Privacy first** — no chat history stored; keys live in Windows Credential Manager and are never committed.
+- **Offline mock mode** — `QQJEVHUD_MOCK=1` runs the whole pipeline locally (no key, no network).
 
 ## How it works
 
@@ -42,14 +50,15 @@ QQ Jev HUD is a **read-only** companion app for Windows QQ. It watches the curre
 ### Install
 
 ```powershell
-git clone https://github.com/evan26ma/qq-jev-hud.git
+git clone https://github.com/Evan26Ma/qq-jev-hud.git
 cd qq-jev-hud
 .\setup.ps1      # installs the .NET 8 SDK, a project Python env, and PaddleOCR
+.\create-shortcut.ps1   # optional: create a desktop shortcut
 ```
 
-### Provide your TypeSafe API key (optional — real judgments only)
+### Configure the engine & API key
 
-The key is stored in **Windows Credential Manager** (target `QQJevHud.TypeSafe.ApiKey`) and is **never** written to the repo, source, logs, or config.
+Easiest: tray menu → **设置…** to pick the judgment engine (Jev / OpenAI-compatible LLM / mock), enter the Base URL + model + API key, and tune the cards & privacy. Keys live only in **Windows Credential Manager** (`QQJevHud.TypeSafe.ApiKey` / `QQJevHud.OpenAI.ApiKey`) and are **never** written to the repo, source, logs, or config.
 
 ```powershell
 # Option 1 — write it with cmdkey
@@ -68,6 +77,22 @@ Without a key (or with `QQJEVHUD_MOCK=1`) the HUD runs in offline mock mode. Aft
 ```
 
 Open a QQ chat and use the tray icon to start/pause analysis. `Ctrl+Alt+J` pauses or resumes.
+
+When a new message arrives you get a **rich judgment card** over QQ plus a **candidate-reply panel**. Tray → 候选回复… reopens the panel.
+
+Full illustrated guide: **[docs/USAGE.md](docs/USAGE.md)** —
+[reading the card](docs/USAGE.md#5-reading-the-judgment-card) ·
+[candidate replies & tones](docs/USAGE.md#6-candidate-replies) ·
+[contact background cards](docs/USAGE.md#7-contact-background-cards) ·
+[troubleshooting](docs/USAGE.md#11-troubleshooting) ·
+[FAQ](docs/USAGE.md#12-faq)
+
+### Preview the UI (no QQ needed)
+
+```powershell
+.\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe --preview-card     # rich judgment card
+.\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe --preview-replies  # candidate replies
+```
 
 ## Privacy & security
 

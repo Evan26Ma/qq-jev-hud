@@ -14,7 +14,8 @@ public interface IChatDetector
     IReadOnlyList<ChatMessage> Detect(
         IReadOnlyList<OcrLine> lines,
         string sessionId,
-        ScreenRect historyBounds);
+        ScreenRect historyBounds,
+        bool isGroupChat = false);
 }
 
 public interface IDecisionProvider
@@ -22,5 +23,6 @@ public interface IDecisionProvider
     Task<DecisionCard> AnalyzeAsync(
         ChatMessage message,
         IReadOnlyList<ChatMessage> context,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? contactNotes = null);
 }

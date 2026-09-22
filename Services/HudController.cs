@@ -11,14 +11,25 @@ public sealed class HudController : IAsyncDisposable
     private readonly WindowCaptureService _capture = new();
     private readonly IOcrEngine _ocr = new OcrWorkerClient();
     private readonly IChatDetector _detector = new ChatDetector();
-    // QQJEVHUD_MOCK=1 swaps in a local, offline decision provider (no network call),
-    // for consent-safe demos and development without a TypeSafe key.
-    private readonly IDecisionProvider _decisions =
-        string.Equals(Environment.GetEnvironmentVariable("QQJEVHUD_MOCK"), "1", StringComparison.Ordinal)
-            ? new MockDecisionProvider()
-            : new TypeSafeDecisionProvider();
+    // Resolved by RefreshProvider() on settings-save / analysis start; the factory keeps
+    // QQJEVHUD_MOCK=1 as the highest-priority override for offline demos.
+    private IDecisionProvider _decisions = null!;
     private readonly OverlayLayoutEngine _layout = new();
     private readonly CalibrationStore _calibrationStore = new();
+    private readonly SettingsStore _settingsStore = new();
+    private readonly ContactNoteStore _noteStore = new();
+    private AppSettings _settings = AppSettings.Default;
+    private OpenAiReplyGenerator? _replyGenerator;
+    private IReadOnlyList<ChatMessage> _lastContext = Array.Empty<ChatMessage>();
+    private string? _contactNotes;
+    private string? _contactName;
+
+    /// <summary>Group chats carry a member count in the title (e.g. "群名 (288)"); 1:1 chats do not.</summary>
+    private static bool IsGroupChat(string? sessionTitle) =>
+        !string.IsNullOrWhiteSpace(sessionTitle) && System.Text.RegularExpressions.Regex.IsMatch(sessionTitle, @"[(（]\s*\d+\s*[)）]");
+
+    /// <summary>Raised when a fresh set of candidate replies is ready for the newest message.</summary>
+    public event Action<ReplyDraft>? ReplyDraftReady;
     private readonly FrameDebouncer _frameDebouncer = new(TimeSpan.FromMilliseconds(950));
     private readonly DispatcherTimer _timer;
     private readonly HashSet<string> _seenIncoming = new(StringComparer.Ordinal);
@@ -34,6 +45,7 @@ public sealed class HudController : IAsyncDisposable
         _overlay = overlay;
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
         _timer.Tick += async (_, _) => await PollAsync();
+        RefreshProvider();
     }
 
     public bool IsEnabled => _enabled;
@@ -42,6 +54,7 @@ public sealed class HudController : IAsyncDisposable
     public async Task StartCurrentChatAsync()
     {
         _enabled = true;
+        RefreshProvider();
         ResetSession();
         _timer.Start();
         SetStatus("正在等待 QQ 聊天窗口…");
@@ -86,6 +99,52 @@ public sealed class HudController : IAsyncDisposable
         };
         selector.Show();
     }
+
+    /// <summary>Applies settings saved from the UI: persist, swap the decision provider, restart cleanly.</summary>
+    public void ApplySettings(AppSettings settings)
+    {
+        _settingsStore.Save(settings);
+        RefreshProvider();
+        ResetSession();
+        SetStatus("设置已保存；重新分析后生效。");
+    }
+
+    private void RefreshProvider()
+    {
+        _settings = _settingsStore.Load().Normalize();
+        _decisions = DecisionProviderFactory.Create(_settings);
+        _replyGenerator = new OpenAiReplyGenerator(_settings.BaseUrl, _settings.Model);
+        _overlay.Opacity = _settings.CardOpacity;
+    }
+
+    /// <summary>Regenerate candidates for a message (the reply panel's "重新生成").</summary>
+    public void RegenerateReplies(ChatMessage message) => _ = GenerateRepliesAsync(message, _lastContext);
+
+    /// <summary>
+    /// "话我帮你想，发送你来定" — drafts candidate replies for a new incoming message in the
+    /// background and hands them to the reply panel. Never blocks the analysis loop.
+    /// </summary>
+    private async Task GenerateRepliesAsync(ChatMessage message, IReadOnlyList<ChatMessage> context)
+    {
+        if (!_settings.GenerateReplies || _replyGenerator is null) return;
+        _lastContext = context;
+        try
+        {
+            var safeMessage = _settings.RedactSensitive ? message with { Text = SensitiveRedactor.Redact(message.Text) } : message;
+            var safeContext = _settings.RedactSensitive
+                ? context.Select(item => item with { Text = SensitiveRedactor.Redact(item.Text) }).ToArray()
+                : context;
+            var draft = await _replyGenerator.GenerateAsync(safeMessage, safeContext, _settings.ResolveTones(), _contactNotes, CancellationToken.None);
+            if (draft.Groups.Count > 0) ReplyDraftReady?.Invoke(draft);
+        }
+        catch
+        {
+            // reply generation must never disturb the HUD
+        }
+    }
+
+    /// <summary>Opens the control panel / settings window.</summary>
+    public void OpenSettings() => new SettingsWindow(this, _settingsStore.Load()).Show();
 
     private async Task PollAsync()
     {
@@ -134,6 +193,8 @@ public sealed class HudController : IAsyncDisposable
                 ResetSession();
                 _sessionId = newSessionId;
                 SetStatus("已识别当前会话；正在建立消息基线…");
+                _contactNotes = await LoadContactNotesAsync(frame);
+                _contactName = await LoadSessionTitleAsync(frame);
             }
 
             IReadOnlyList<OcrLine> rawLines;
@@ -148,7 +209,12 @@ public sealed class HudController : IAsyncDisposable
             {
                 Bounds = new ScreenRect(line.Bounds.Left + historyBounds.Left, line.Bounds.Top + historyBounds.Top, line.Bounds.Width, line.Bounds.Height)
             }).ToArray();
-            var messages = _detector.Detect(lines, _sessionId!, historyBounds).OrderBy(message => message.Bounds.Top).ToArray();
+            var messages = _detector.Detect(lines, _sessionId!, historyBounds, IsGroupChat(_contactName)).OrderBy(message => message.Bounds.Top).ToArray();
+            // In a 1:1 chat the session title is the contact, so label every incoming message with it.
+            if (!IsGroupChat(_contactName) && !string.IsNullOrWhiteSpace(_contactName))
+                messages = messages.Select(message => message.Direction == MessageDirection.Incoming && message.Sender is null
+                    ? message with { Sender = _contactName }
+                    : message).ToArray();
             var incoming = messages.Where(message => message.Direction == MessageDirection.Incoming).ToArray();
 
             if (!_baselineTaken)
@@ -164,15 +230,21 @@ public sealed class HudController : IAsyncDisposable
             var context = messages.TakeLast(10).ToArray();
             foreach (var message in incoming.Where(message => _seenIncoming.Add(message.Id)))
             {
-                var decision = await _decisions.AnalyzeAsync(message, context, CancellationToken.None);
+                // Redact sensitive tokens before any text leaves for the decision provider.
+                var safeMessage = _settings.RedactSensitive ? message with { Text = SensitiveRedactor.Redact(message.Text) } : message;
+                var safeContext = _settings.RedactSensitive
+                    ? context.Select(item => item with { Text = SensitiveRedactor.Redact(item.Text) }).ToArray()
+                    : context;
+                var decision = await _decisions.AnalyzeAsync(safeMessage, safeContext, CancellationToken.None, _contactNotes);
                 _cards[message.Id] = (message, decision);
+                _ = GenerateRepliesAsync(message, context);
             }
 
             var visible = incoming.Select(message => message.Id).ToHashSet(StringComparer.Ordinal);
             foreach (var stale in _cards.Keys.Where(id => !visible.Contains(id)).ToArray()) _cards.Remove(stale);
             var currentCards = _cards.Values
                 .OrderByDescending(item => item.Message.Bounds.Top)
-                .Take(4)
+                .Take(_settings.MaxCards)
                 .ToArray();
             if (currentCards.Length == 0)
             {
@@ -183,7 +255,8 @@ public sealed class HudController : IAsyncDisposable
             else if (qqIsForeground)
             {
                 RecordRuntimeState("cards-visible");
-                _overlay.ShowLayouts(frame.WindowBounds, frame.Dpi, _layout.Arrange(currentCards, historyBounds));
+                _overlay.ShowLayouts(frame.WindowBounds, frame.Dpi, _layout.Arrange(currentCards, historyBounds),
+                    _settings.ShowIntent, _settings.ShowRisk, _settings.ShowAdvice);
             }
             else
             {
@@ -199,6 +272,41 @@ public sealed class HudController : IAsyncDisposable
             SetStatus("识别遇到异常，正在自动重试…");
         }
         finally { _polling = false; }
+    }
+
+    /// <summary>
+    /// Reads the chat header (best effort) to find the contact name, then loads that contact's
+    /// background note from notes/&lt;联系人&gt;.md. Failures are silent — notes are an enhancement.
+    /// </summary>
+    private async Task<string?> LoadContactNotesAsync(CapturedFrame frame)
+    {
+        var name = await LoadSessionTitleAsync(frame);
+        return string.IsNullOrWhiteSpace(name) ? null : _noteStore.Load(name);
+    }
+
+    /// <summary>OCR of the chat header title: the contact / group name (null when unreadable).</summary>
+    private async Task<string?> LoadSessionTitleAsync(CapturedFrame frame)
+    {
+        try
+        {
+            var headerBounds = new ScreenRect(
+                frame.WindowBounds.Left + frame.WindowBounds.Width * 0.26,
+                frame.WindowBounds.Top + 4,
+                frame.WindowBounds.Width * 0.44,
+                Math.Min(46, frame.WindowBounds.Height * 0.09));
+            var crop = BitmapTools.Crop(frame.Image, frame.WindowBounds, headerBounds);
+            var lines = await _ocr.RecognizeAsync(crop, CancellationToken.None);
+            return lines
+                .Where(line => line.Confidence >= 0.6 && !string.IsNullOrWhiteSpace(line.Text))
+                .OrderBy(line => line.Bounds.Top)
+                .ThenBy(line => line.Bounds.Left)
+                .Select(line => TextNormalizer.Normalize(line.Text))
+                .FirstOrDefault(text => text.Length is > 0 and < 40);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void RecordRuntimeState(string state)
@@ -218,6 +326,8 @@ public sealed class HudController : IAsyncDisposable
     private void ResetSession()
     {
         _sessionId = null;
+        _contactName = null;
+        _contactNotes = null;
         _baselineTaken = false;
         _seenIncoming.Clear();
         _cards.Clear();

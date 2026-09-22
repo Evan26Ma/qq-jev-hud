@@ -9,3 +9,8 @@ __pycache__/
 *.log
 calibration.json
 HANDOFF.md
+.zcode/
+
+# Contact background cards are private; keep only the usage guide.
+notes/*
+!notes/README.md

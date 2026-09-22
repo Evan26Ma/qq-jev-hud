@@ -12,8 +12,16 @@ public sealed partial class ChatDetector : IChatDetector
     [GeneratedRegex(@"[（(\[][^）)\]]*[）)\]]")]
     private static partial Regex Badge();
 
-    [GeneratedRegex(@"\b(?:[Ll][Vv])\s*\d+\b")]
+    /// <summary>
+    /// Group titles and level badges: "LV41", "Lv10 青铜", "LV29 黄金". They decorate a nickname and must
+    /// never reach the model as if they were part of what someone said.
+    /// </summary>
+    [GeneratedRegex(@"\b[Ll][Vv]\s*\d+\s*(?:青铜|白银|黄金|铂金|钻石|星耀|王者|大师|宗师|传奇)?")]
     private static partial Regex Level();
+
+    /// <summary>Bare tier words left over once the LV number has been stripped.</summary>
+    [GeneratedRegex(@"^\s*(?:青铜|白银|黄金|铂金|钻石|星耀|王者|大师|宗师|传奇|管理员|群主|成员)\s*$")]
+    private static partial Regex TierOnly();
 
     /// <summary>Sentence punctuation: its presence means the line is prose, not a display name.</summary>
     [GeneratedRegex(@"[。！？，、；：…!?,;]")]
@@ -29,6 +37,8 @@ public sealed partial class ChatDetector : IChatDetector
             .Select(line => line with { Text = TextNormalizer.Normalize(line.Text) })
             .Where(line => line.Confidence >= 0.35 && !string.IsNullOrWhiteSpace(line.Text))
             .Where(line => !TextNormalizer.IsMetadata(line.Text))
+            // Group titles / level badges ("LV41", "Lv10 青铜") are decoration, not conversation.
+            .Where(line => !IsBadgeOnly(line.Text))
             .Where(line => line.Bounds.Width > 4 && line.Bounds.Height > 4)
             .OrderBy(line => line.Bounds.Top)
             .ThenBy(line => line.Bounds.Left)
@@ -153,19 +163,22 @@ public sealed partial class ChatDetector : IChatDetector
     private static bool IsNameOnly(List<OcrLine> group) =>
         group.Count > 0 && group.All(item => ReadName(item.Text) is not null || IsBadgeOnly(item.Text));
 
-    /// <summary>A short, prose-free line with badges stripped — a display name, or null.</summary>
+    /// <summary>A short, prose-free line with badges and level titles stripped — a display name, or null.</summary>
     private static string? ReadName(string raw)
     {
         var text = Badge().Replace(Level().Replace(TextNormalizer.Normalize(raw), " "), " ").Trim();
         if (text.Length is 0 or > 12) return null;
         if (ProsePunctuation().IsMatch(text)) return null;
+        if (TierOnly().IsMatch(text)) return null;
         return text;
     }
 
-    /// <summary>A line that is nothing but a tag/level, e.g. "[管理员]" or "LV41".</summary>
+    /// <summary>A line that carries no conversation: only a tag, a level title, or a bare tier word.</summary>
     private static bool IsBadgeOnly(string raw)
     {
         var text = TextNormalizer.Normalize(raw);
-        return text.Length > 0 && Badge().Replace(Level().Replace(text, " "), " ").Trim().Length == 0;
+        if (text.Length == 0) return true;
+        var stripped = Badge().Replace(Level().Replace(text, " "), " ").Trim();
+        return stripped.Length == 0 || TierOnly().IsMatch(stripped);
     }
 }

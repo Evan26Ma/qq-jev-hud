@@ -3,31 +3,34 @@ using QQJevHud.Core;
 namespace QQJevHud.Views;
 
 /// <summary>
-/// Sample content for the "先看看效果" buttons: renders a judgment card and a choice panel from local
-/// mock data, so the UI can be inspected without QQ, a key, or any network call.
+/// Sample content for the "先看看效果" buttons: renders a judgment card and an expanded card with
+/// replies from local mock data, so the UI can be inspected without QQ, a key, or any network call.
 /// </summary>
 public static class Preview
 {
     private const string SampleMessage = "我昨天买的M7五级弹，4400一发，怕是有点难赚";
 
-    public static void ShowCardPreview(Action? openSettings = null)
+    /// <summary>Shows a plain judgment card over a stand-in chat area.</summary>
+    public static void ShowCardPreview()
     {
         var (message, card) = Sample();
         var overlay = new OverlayWindow();
         var area = new ScreenRect(60, 60, 940, 720);
         var layouts = new OverlayLayoutEngine().Arrange(new[] { (message, card) }, area);
         overlay.ShowLayouts(area, 96, layouts, showOptions: true, showRisk: true, showAdvice: true);
-        // Keep the sample on screen briefly; it is an overlay, so close it on a timer.
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
-        timer.Tick += (_, _) => { overlay.Close(); timer.Stop(); };
-        timer.Start();
     }
 
-    public static void ShowChoicePreview(Action? openSettings = null)
+    /// <summary>Shows a card with its replies expanded, in a small stand-in chat area.</summary>
+    public static void ShowChoicePreview()
     {
         var (message, card) = Sample();
-        // The sample judgment is low-risk, so the choices' predictions line up with it.
+        // Keep the sample consistent with the low-risk choices below.
         card = card with { RiskLevel = 2, RiskLabel = "低风险", RecommendedAction = "轻松接话，别把话题聊死" };
+        var overlay = new OverlayWindow();
+        var area = new ScreenRect(60, 60, 940, 720);
+        var layouts = new OverlayLayoutEngine().Arrange(new[] { (message, card) }, area);
+        overlay.ShowLayouts(area, 96, layouts, showOptions: true, showRisk: true, showAdvice: true);
+
         var choices = new[]
         {
             new ChoiceItem(1, "确实贵，你是想囤还是自己用？", "理科直男",
@@ -39,9 +42,8 @@ public static class Preview
             new ChoiceItem(4, "那你还买，图啥呢？", "自然接话",
                 new CandidateOutcome("觉得被敷衍", 41, 5, "需要留意"))
         };
-        var set = new ChoiceSet(message.Id, message.Text, message.Sender, card, choices);
-        var window = new ChoiceWindow();
-        window.ShowChoiceSet(set);
+        // Land the set on the card, then open it the way a click would.
+        overlay.ApplyChoices(new ChoiceSet(message.Id, message.Text, message.Sender, card, choices));
     }
 
     private static (ChatMessage Message, DecisionCard Card) Sample()

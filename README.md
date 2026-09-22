@@ -12,7 +12,7 @@ More importantly, it doesn't stop at telling you what the other person means: it
 
 ## Highlights
 
-- **"We draft it, you send it"** — each new message opens a **choice panel**: four candidates in different tones, **each labelled with the outcome Jev predicts** (soothed / lands well / feels brushed off / may get worse) and a risk level, ranked so the most promising option comes first. **Click one to fill it into QQ** — sending stays your call.
+- **"We draft it, you send it"** — the judgment card carries a **「怎么回 ▾」** row: click the card to expand four candidates in place, **each labelled with the outcome Jev predicts** (soothed / lands well / feels brushed off / may get worse) and a risk level, ranked so the most promising comes first. **Click one to fill it into QQ** — sending stays your call.
 - **Guided home screen** — on launch: what the tool does plus a 4-step readiness checklist (Jev / replies / QQ / start), with a button that jumps straight to whatever is unconfigured. Sample cards and a sample choice panel can be previewed with no QQ and no network.
 - **Non-intrusive** — no injection, no hooking, no modification of QQ, no access to QQ's database. It only reads the visible window.
 - **Local OCR** — visible text is read with local [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR); screenshots stay in memory and are never written to disk.
@@ -20,7 +20,7 @@ More importantly, it doesn't stop at telling you what the other person means: it
 - **Bring your own engine** — TypeSafe Jev **or** any OpenAI-compatible LLM (OpenAI / DeepSeek / Ollama / vLLM…); cards and candidates look identical either way.
 - **Relationship modes** — a general profile (friends/colleagues/groups) and an intimate-relationship profile.
 - **Contact background cards** — drop `notes/<contact>.md` with your agreements, sore spots and recent context; it takes effect on save.
-- **Click-through overlay** — cards are transparent, topmost and mouse-transparent; they never steal focus.
+- **Cards travel with the chat window** — pinned to the QQ window and following it as it moves or resizes; the area outside a card stays click-through, so the chat remains fully usable.
 - **Privacy first** — no chat history stored; keys live in Windows Credential Manager and are never committed.
 - **Offline mock mode** — `QQJEVHUD_MOCK=1` runs the whole pipeline locally (no key, no network).
 

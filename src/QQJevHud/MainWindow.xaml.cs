@@ -17,7 +17,6 @@ public partial class MainWindow : Window, IDisposable
     private readonly OverlayWindow _overlay = new();
     private readonly HudController _controller;
     private readonly Forms.NotifyIcon _tray;
-    private readonly ChoiceWindow _choiceWindow;
     private HomeWindow? _homeWindow;
     private SettingsWindow? _settingsWindow;
     private bool _allowClose;
@@ -28,9 +27,6 @@ public partial class MainWindow : Window, IDisposable
         InitializeComponent();
         _controller = new HudController(_overlay);
         _controller.StatusChanged += status => Dispatcher.InvokeAsync(() => StatusText.Text = status);
-        _choiceWindow = new ChoiceWindow();
-        _controller.ChoiceSetReady += set => Dispatcher.InvokeAsync(() => _choiceWindow.ShowChoiceSet(set));
-        _choiceWindow.RegenerateRequested += message => _controller.RegenerateReplies(message);
         _tray = CreateTrayIcon();
         Closing += OnClosing;
         var handle = new WindowInteropHelper(this).EnsureHandle();
@@ -84,7 +80,6 @@ public partial class MainWindow : Window, IDisposable
         menu.Items.Add("暂停自动分析", null, (_, _) => _controller.Pause());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("重新校准聊天区域", null, (_, _) => _controller.OpenCalibration());
-        menu.Items.Add("怎么回…", null, (_, _) => _choiceWindow.Show());
         menu.Items.Add("设置…", null, (_, _) => ShowSettings());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出", null, (_, _) => ExitApplication());
@@ -144,7 +139,6 @@ public partial class MainWindow : Window, IDisposable
         if (handle != IntPtr.Zero) NativeMethods.UnregisterHotKey(handle, ToggleHotKeyId);
         _tray.Visible = false;
         _tray.Dispose();
-        _choiceWindow.Close();
         _settingsWindow?.Close();
         _homeWindow?.Close();
         _overlay.ClearCards();

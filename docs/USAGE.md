@@ -14,7 +14,7 @@ The complete user manual: installation, configuration, daily use, settings refer
 - [4. Home screen](#4-home-screen)
 - [5. Daily use](#5-daily-use)
 - [6. Reading the judgment card](#6-reading-the-judgment-card)
-- [7. The choice panel: pick a reply by its outcome](#7-the-choice-panel-pick-a-reply-by-its-outcome)
+- [7. Choosing a reply inside the card](#7-choosing-a-reply-inside-the-card)
 - [8. Contact background cards](#8-contact-background-cards)
 - [9. Relationship modes](#9-relationship-modes)
 - [10. Settings reference](#10-settings-reference)
@@ -228,23 +228,26 @@ When space is tight the app tries, in order: **below the message** → **beside 
 
 ---
 
-## 7. The choice panel: pick a reply by its outcome
+## 7. Choosing a reply inside the card
 
-When a new message arrives you get **one panel** — judgment and replies in the same place, no window
-juggling. Each option previews **what it would lead to**, like a visual novel's choice screen.
+The replies **live inside the card** — no separate window. The judgment card starts collapsed with a
+**「怎么回 ▾」** row at the bottom; click it to expand four candidates in place, click **「收起 ▴」** to collapse.
 
 ```
 ┌──────────────────────────────────────────┐
-│ 零                                        │  ← who said it
-│ 我昨天买的M7五级弹，4400一发，怕是有点难赚   │  ← what they said
-│ ────────────────────────────────────────  │
-│ ★ 真实意图  自然分享 54%  表达情绪 28%      │  ← Jev's read
+│ Jev · 对方真实意图                        │
+│ 零：我昨天买的M7五级弹，4400一发…          │  ← who said what
+│ ★ 真实意图  自然分享 54%  表达情绪 28%      │
 │ ★ 怎么回    轻松接话 67%  先问清楚 18%      │
 │ 建议 轻松接话，别把话题聊死      低风险 2/10 │
-│                                          │
-│ [重新生成]  已给出 4 个选择 · 点击即填入   │
-│                                          │
-│ ① 理科直男                                │
+│ ────────────────────────────────────────  │
+│ 怎么回 ▾                                  │  ← click to expand
+└──────────────────────────────────────────┘
+                    ↓ after clicking
+┌──────────────────────────────────────────┐
+│ … (unchanged above)                       │
+│ 收起 ▴                                    │
+│ ① 理科直男                                 │
 │   确实贵，你是想囤还是自己用？              │
 │   → 满意、顺利接住 58%  低风险             │  ← Jev's predicted outcome
 │ ② 阴阳怪气  → 被安抚、情绪缓和 62%  低风险   │
@@ -252,6 +255,8 @@ juggling. Each option previews **what it would lead to**, like a visual novel's 
 │ ④ 自然接话  → 觉得被敷衍 41%  需要留意      │
 └──────────────────────────────────────────┘
 ```
+
+> While candidates are being drafted the row reads 「正在想怎么回…」, then becomes 「怎么回 ▾」.
 
 ### Every option carries its predicted outcome
 
@@ -266,40 +271,23 @@ to guess which is good, **Jev predicts how the other person would react** to eac
 | 觉得被敷衍 | They feel the answer was perfunctory |
 | 可能更不满 | They may get more upset — it could escalate |
 
+All candidates are evaluated in a single request, so a full set costs about as much as one judgment.
+
 ### Ordering
 
-Options are ranked by **"most likely to go well"**, not by raw probability: a good reaction first
+Options are ranked by **"most likely to go well"**, not raw probability: good reaction first
 (soothe/land it > neutral > brushed-off/upset), then lower risk, then probability. So "soothed, 55%"
 ranks above "brushed off, 70%".
 
 ### Click to fill it in
 
-**Click any option** → the text is filled into QQ's input box. It **never sends**.
+**Click any option** → the text goes into QQ's input box. It **never sends**. The card shows the result
+underneath; if QQ can't be focused it **falls back to copying** and tells you to paste with `Ctrl+V`.
 
-If QQ can't be focused it **falls back to copying** and tells you to paste with `Ctrl+V` — it never claims success falsely.
+### The card travels with the chat window
 
-### Regenerate
-
-Not happy with the set? Hit **重新生成** for a fresh batch from different tone angles.
-
-### Tones (the writing voice)
-
-Ten built-ins; each round picks different angles to write 4 distinct candidates:
-
-`高情商话术` `自然接话` `温柔体贴` `稳如老狗` `拒绝加班` `卑微乙方` `职场黑话` `理科直男` `阴阳怪气` `已读乱回`
-
-**Which ones are active**: Settings → 候选回复 → **启用的话术**, comma-separated. Default `高情商话术,自然接话,稳如老狗`.
-
-**Custom**: in the same section, **自定义话术**, format `name=description|name=description`:
-
-```
-温柔一点=先回应对方感受，再自然接话，不说教
-简短一点=一句话说完，不用表情包
-```
-
-A custom tone with the same name overrides the built-in one.
-
-> Judgments and replies are **probabilistic references**, not facts. You still make the call.
+Cards are **pinned to the QQ window**: move or resize QQ and they follow, instead of being left behind.
+Switching conversations clears them.
 
 ---
 

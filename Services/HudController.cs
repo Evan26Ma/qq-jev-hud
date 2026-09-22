@@ -29,8 +29,8 @@ public sealed class HudController : IAsyncDisposable
     private static bool IsGroupChat(string? sessionTitle) =>
         !string.IsNullOrWhiteSpace(sessionTitle) && System.Text.RegularExpressions.Regex.IsMatch(sessionTitle, @"[(（]\s*\d+\s*[)）]");
 
-    /// <summary>Raised with the complete choice set (judgment + candidates + predicted outcomes).</summary>
-    public event Action<ChoiceSet>? ChoiceSetReady;
+    /// <summary>How much of the visible conversation is handed to the model as context.</summary>
+    private const int MaxContextMessages = 60;
     private readonly FrameDebouncer _frameDebouncer = new(TimeSpan.FromMilliseconds(950));
     private readonly DispatcherTimer _timer;
     private readonly HashSet<string> _seenIncoming = new(StringComparer.Ordinal);
@@ -118,8 +118,12 @@ public sealed class HudController : IAsyncDisposable
         _overlay.Opacity = _settings.CardOpacity;
     }
 
-    /// <summary>Redrafts the choices for a message (the panel's "重新生成").</summary>
-    public void RegenerateReplies(ChatMessage message) => _ = BuildChoicesAsync(message, _lastContext);
+    /// <summary>Redrafts the choices for a message (used when the card asks to regenerate).</summary>
+    public void RegenerateReplies(ChatMessage message)
+    {
+        _overlay.MarkWaiting(message.Id);
+        _ = BuildChoicesAsync(message, _lastContext);
+    }
 
     /// <summary>
     /// The heart of the flow: judge the message, draft a few candidate replies, then ask Jev what each
@@ -139,14 +143,14 @@ public sealed class HudController : IAsyncDisposable
             var card = known ?? await _decisions.AnalyzeAsync(safeMessage, safeContext, CancellationToken.None, _contactNotes);
             if (!_settings.GenerateReplies || _replyGenerator is null)
             {
-                ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
+                _overlay.ApplyChoices(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
                 return;
             }
 
             var drafts = await _replyGenerator.GenerateAsync(safeMessage, safeContext, _settings.ResolveTones(), _contactNotes, CancellationToken.None);
             if (drafts.Count == 0)
             {
-                ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
+                _overlay.ApplyChoices(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
                 return;
             }
 
@@ -158,7 +162,7 @@ public sealed class HudController : IAsyncDisposable
                 draft.Text,
                 draft.ToneName,
                 index < outcomes.Count ? outcomes[index] : null)).ToArray();
-            ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, choices));
+            _overlay.ApplyChoices(new ChoiceSet(message.Id, message.Text, message.Sender, card, choices));
         }
         catch
         {
@@ -185,6 +189,11 @@ public sealed class HudController : IAsyncDisposable
             }
             var qqIsForeground = QQWindowLocator.IsForeground(qq);
             RecordRuntimeState(qqIsForeground ? "qq-foreground" : "qq-background");
+
+            // Follow the window: the overlay is re-pinned on every poll, so cards travel with QQ as it
+            // is moved or resized instead of waiting for the next settled frame.
+            _overlay.FollowWindow(qq.Bounds, qq.Dpi);
+
             if (qqIsForeground && !_baselineTaken && !_overlay.IsVisible)
             {
                 _overlay.ShowStatusCard(qq.Bounds, qq.Dpi, "正在识别当前聊天…");
@@ -250,7 +259,9 @@ public sealed class HudController : IAsyncDisposable
                 return;
             }
 
-            var context = messages.TakeLast(10).ToArray();
+            // The whole visible conversation is the context handed to the model — not just the last few
+            // incoming lines — so it can read the exchange the way a person would.
+            var context = messages.TakeLast(MaxContextMessages).ToArray();
             foreach (var message in incoming.Where(message => _seenIncoming.Add(message.Id)))
             {
                 // Redact sensitive tokens before any text leaves for the decision provider.
@@ -260,7 +271,7 @@ public sealed class HudController : IAsyncDisposable
                     : context;
                 var decision = await _decisions.AnalyzeAsync(safeMessage, safeContext, CancellationToken.None, _contactNotes);
                 _cards[message.Id] = (message, decision);
-                // Judgment and choices share one panel, so build the whole set in the background.
+                // Judgment is on screen already; the replies are generated next and land in the card.
                 _ = BuildChoicesAsync(message, context, decision);
             }
 

@@ -159,9 +159,9 @@ public partial class HomeWindow : Window
 
     private void SettingsClick(object sender, RoutedEventArgs e) => _openSettings();
 
-    private void PreviewCardClick(object sender, RoutedEventArgs e) => Preview.ShowCardPreview(_openSettings);
+    private void PreviewCardClick(object sender, RoutedEventArgs e) => Preview.ShowCardPreview();
 
-    private void PreviewChoicesClick(object sender, RoutedEventArgs e) => Preview.ShowChoicePreview(_openSettings);
+    private void PreviewChoicesClick(object sender, RoutedEventArgs e) => Preview.ShowChoicePreview();
 
     private void CloseClick(object sender, RoutedEventArgs e) => Close();
 }

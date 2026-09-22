@@ -4,13 +4,11 @@
         xmlns:local="clr-namespace:QQJevHud.Views"
         Title="QQ Jev HUD Overlay" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ShowInTaskbar="False" Topmost="True"
-        ShowActivated="False" Focusable="False" IsHitTestVisible="False">
+        ShowActivated="False" Focusable="False">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     <local:ProbabilityToWidthConverter x:Key="BarWidth" FullWidth="62" />
-    <!-- Bar brushes (BarTrackBrush / BarFillBrush / BarFillMutedBrush) live in App.xaml so the
-         view-model can resolve them too; a window-only resource would break the card silently. -->
     <Style x:Key="CardBorder" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -60,11 +58,40 @@
         </ItemsControl>
       </StackPanel>
     </DataTemplate>
+    <!-- One selectable reply: click to fill it into QQ (never sends). -->
+    <DataTemplate x:Key="ChoiceTemplate" DataType="{x:Type local:ChoiceRowViewModel}">
+      <Border x:Name="ChoiceRow" Margin="0,4,0,0" Padding="8,6" CornerRadius="6"
+              Background="#FFF7F8FA" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+              Cursor="Hand" ToolTip="点击填入 QQ 输入框（不会自动发送）">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Index}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding ToneName}" FontSize="11" Margin="6,0,0,0"
+                       Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Text}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
+                     Foreground="{StaticResource PrimaryTextBrush}" />
+          <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+            <TextBlock Text="{Binding OutcomeText}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{Binding AccentBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding RiskText}" FontSize="11" Margin="8,0,0,0"
+                       Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <Trigger SourceName="ChoiceRow" Property="IsMouseOver" Value="True">
+          <Setter TargetName="ChoiceRow" Property="BorderBrush" Value="{StaticResource BrandBrush}" />
+          <Setter TargetName="ChoiceRow" Property="Background" Value="#FFF2F6FD" />
+        </Trigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
   </Window.Resources>
-  <Grid IsHitTestVisible="False">
-    <ItemsControl ItemsSource="{Binding Cards}" IsHitTestVisible="False" Focusable="False">
+  <Grid MouseLeftButtonUp="OnOverlayClick">
+    <ItemsControl ItemsSource="{Binding Cards}">
       <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate><Canvas IsHitTestVisible="False" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemContainerStyle>
         <Style TargetType="{x:Type ContentPresenter}">
@@ -82,6 +109,9 @@
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="{Binding Card.Topic, StringFormat=Jev · {0}}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" />
@@ -112,6 +142,17 @@
                   <TextBlock Text="{Binding Card.RecommendedAction, StringFormat=建议：{0}}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Visibility="{Binding ShowAdvice, Converter={StaticResource BoolToVisibility}}" />
                   <TextBlock Grid.Column="1" Text="{Binding RiskText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding RiskBrush}" Visibility="{Binding ShowRisk, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
+                <!-- Expander: the replies live inside the card, so nothing floats separately. -->
+                <Border x:Name="Expander" Grid.Row="5" Margin="0,8,0,0" Padding="0,6,0,0" BorderThickness="0,1,0,0"
+                        BorderBrush="{StaticResource BorderBrush}" Cursor="Hand" ToolTip="点击展开候选回复">
+                  <TextBlock Text="{Binding ExpandHint}" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource BrandBrush}" />
+                </Border>
+                <ItemsControl Grid.Row="6" ItemsSource="{Binding ChoiceRows}" Visibility="{Binding ShowChoices, Converter={StaticResource BoolToVisibility}}"
+                              ItemTemplate="{StaticResource ChoiceTemplate}" Margin="0,4,0,0" />
+                <TextBlock Grid.Row="7" Margin="0,4,0,0" Text="{Binding StatusHint}" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{StaticResource BrandBrush}"
+                           Visibility="{Binding HasStatusHint, Converter={StaticResource BoolToVisibility}}" />
               </Grid>
             </Border>
             <Border Width="18" Height="18" CornerRadius="9" Background="{Binding RiskBrush}" Visibility="{Binding IsMarker, Converter={StaticResource BoolToVisibility}}" ToolTip="Jev 判断已折叠" />

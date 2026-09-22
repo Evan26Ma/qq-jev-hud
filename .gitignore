@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.venv/
+__pycache__/
+*.pyc
+*.user
+*.suo
+*.log
+calibration.json
+HANDOFF.md

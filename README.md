@@ -12,7 +12,8 @@ More importantly, it doesn't stop at telling you what the other person means: it
 
 ## Highlights
 
-- **"We draft it, you send it"** — for each new message it writes candidate replies per tone (高情商 / natural / boundary-setting / sarcastic …), each with **copy** and **fill-into-QQ** actions. Sending stays in your hands.
+- **"We draft it, you send it"** — each new message opens a **choice panel**: four candidates in different tones, **each labelled with the outcome Jev predicts** (soothed / lands well / feels brushed off / may get worse) and a risk level, ranked so the most promising option comes first. **Click one to fill it into QQ** — sending stays your call.
+- **Guided home screen** — on launch: what the tool does plus a 4-step readiness checklist (Jev / replies / QQ / start), with a button that jumps straight to whatever is unconfigured. Sample cards and a sample choice panel can be previewed with no QQ and no network.
 - **Non-intrusive** — no injection, no hooking, no modification of QQ, no access to QQ's database. It only reads the visible window.
 - **Local OCR** — visible text is read with local [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR); screenshots stay in memory and are never written to disk.
 - **Rich judgment card** — each card quotes **who said what** (the original message, with the speaker's name in group chats), then gives subtext, emotion, real intent (★), tone distance, what they expect, relationship state, and how to reply (★) with probability bars. The quote keeps the card identifiable even when a busy group scrolls past it.
@@ -78,14 +79,15 @@ Without a key (or with `QQJEVHUD_MOCK=1`) the HUD runs in offline mock mode. Aft
 
 Open a QQ chat and use the tray icon to start/pause analysis. `Ctrl+Alt+J` pauses or resumes.
 
-When a new message arrives you get a **rich judgment card** over QQ plus a **candidate-reply panel**. Tray → 候选回复… reopens the panel.
+When a new message arrives you get a **judgment card** over QQ plus a **choice panel** — judgment and replies in one place, every option labelled with its predicted outcome. Tray → 怎么回… reopens the panel.
 
 Full illustrated guide: **[docs/USAGE.md](docs/USAGE.md)** —
-[reading the card](docs/USAGE.md#5-reading-the-judgment-card) ·
-[candidate replies & tones](docs/USAGE.md#6-candidate-replies) ·
-[contact background cards](docs/USAGE.md#7-contact-background-cards) ·
-[troubleshooting](docs/USAGE.md#11-troubleshooting) ·
-[FAQ](docs/USAGE.md#12-faq)
+[home screen](docs/USAGE.md#4-home-screen) ·
+[reading the card](docs/USAGE.md#6-reading-the-judgment-card) ·
+[the choice panel](docs/USAGE.md#7-the-choice-panel-pick-a-reply-by-its-outcome) ·
+[contact background cards](docs/USAGE.md#8-contact-background-cards) ·
+[troubleshooting](docs/USAGE.md#12-troubleshooting) ·
+[FAQ](docs/USAGE.md#13-faq)
 
 ### Preview the UI (no QQ needed)
 

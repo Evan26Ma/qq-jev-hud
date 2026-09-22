@@ -7,14 +7,19 @@ using QQJevHud.Views;
 
 namespace QQJevHud;
 
-/// <summary>Invisible message host: the only visible UI is the QQ-anchored overlay and the tray menu.</summary>
+/// <summary>
+/// Invisible message host. Visible surfaces are the QQ-anchored overlay, the choice panel, the home /
+/// settings windows and the tray menu.
+/// </summary>
 public partial class MainWindow : Window, IDisposable
 {
     private const int ToggleHotKeyId = 0x4A65;
     private readonly OverlayWindow _overlay = new();
     private readonly HudController _controller;
     private readonly Forms.NotifyIcon _tray;
-    private readonly ReplyWindow _replyWindow;
+    private readonly ChoiceWindow _choiceWindow;
+    private HomeWindow? _homeWindow;
+    private SettingsWindow? _settingsWindow;
     private bool _allowClose;
     private bool _disposed;
 
@@ -23,13 +28,9 @@ public partial class MainWindow : Window, IDisposable
         InitializeComponent();
         _controller = new HudController(_overlay);
         _controller.StatusChanged += status => Dispatcher.InvokeAsync(() => StatusText.Text = status);
-        _replyWindow = new ReplyWindow();
-        _controller.ReplyDraftReady += draft => Dispatcher.InvokeAsync(() =>
-        {
-            _replyWindow.ShowDraft(draft);
-            if (!_replyWindow.IsVisible) _replyWindow.Show();
-        });
-        _replyWindow.RegenerateRequested += message => _controller.RegenerateReplies(message);
+        _choiceWindow = new ChoiceWindow();
+        _controller.ChoiceSetReady += set => Dispatcher.InvokeAsync(() => _choiceWindow.ShowChoiceSet(set));
+        _choiceWindow.RegenerateRequested += message => _controller.RegenerateReplies(message);
         _tray = CreateTrayIcon();
         Closing += OnClosing;
         var handle = new WindowInteropHelper(this).EnsureHandle();
@@ -40,19 +41,51 @@ public partial class MainWindow : Window, IDisposable
         }
     }
 
-    public void StartAutomaticAnalysis() => _ = _controller.StartCurrentChatAsync();
+    /// <summary>Starts analysis and shows the home page, which is the app's entry point.</summary>
+    public void StartAutomaticAnalysis()
+    {
+        _ = _controller.StartCurrentChatAsync();
+        ShowHome();
+    }
 
-    public void OpenSettingsWindow() => _controller.OpenSettings();
+    public void OpenSettingsWindow() => ShowSettings();
+
+    private void ShowHome()
+    {
+        if (_homeWindow is { IsLoaded: true })
+        {
+            _homeWindow.Refresh();
+            _homeWindow.Activate();
+            return;
+        }
+        _homeWindow = new HomeWindow(_controller, ShowSettings);
+        _homeWindow.Closed += (_, _) => _homeWindow = null;
+        _homeWindow.Show();
+    }
+
+    private void ShowSettings()
+    {
+        if (_settingsWindow is { IsLoaded: true })
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+        _settingsWindow = new SettingsWindow(_controller, new SettingsStore().Load());
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; _homeWindow?.Refresh(); };
+        _settingsWindow.Show();
+    }
 
     private Forms.NotifyIcon CreateTrayIcon()
     {
         var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add("打开主界面", null, (_, _) => ShowHome());
+        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("自动分析已开启", null, async (_, _) => await _controller.StartCurrentChatAsync());
         menu.Items.Add("暂停自动分析", null, (_, _) => _controller.Pause());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("重新校准聊天区域", null, (_, _) => _controller.OpenCalibration());
-        menu.Items.Add("候选回复…", null, (_, _) => _replyWindow.Show());
-        menu.Items.Add("设置…", null, (_, _) => _controller.OpenSettings());
+        menu.Items.Add("怎么回…", null, (_, _) => _choiceWindow.Show());
+        menu.Items.Add("设置…", null, (_, _) => ShowSettings());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出", null, (_, _) => ExitApplication());
         return new Forms.NotifyIcon
@@ -111,9 +144,11 @@ public partial class MainWindow : Window, IDisposable
         if (handle != IntPtr.Zero) NativeMethods.UnregisterHotKey(handle, ToggleHotKeyId);
         _tray.Visible = false;
         _tray.Dispose();
+        _choiceWindow.Close();
+        _settingsWindow?.Close();
+        _homeWindow?.Close();
         _overlay.ClearCards();
         _overlay.Close();
-        _replyWindow.Close();
         _controller.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }

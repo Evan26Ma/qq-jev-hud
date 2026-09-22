@@ -1,3 +1,4 @@
+using System.Text.Json;
 using QQJevHud.Core;
 
 namespace QQJevHud.Tests;
@@ -40,33 +41,39 @@ public sealed class ToneAndReplyTests
     }
 
     [Fact]
-    public void ParseDraft_ReadsGroupedCandidates()
+    public void ParseCandidates_ReadsToneAndText()
     {
         var tones = new[] { new Tone("高情商话术", "得体") };
         var content = """
-        {"groups":[{"tone":"高情商话术","replies":[{"style":"稳妥","text":"我在的，刚刚在忙，现在看。"},{"style":"有个性","text":"刚在忙，这不就来了嘛。"}]}]}
+        {"choices":[{"tone":"高情商话术","text":"我在的，刚刚在忙，现在看。"},{"tone":"理科直男","text":"刚在处理事情，你说。"}]}
         """;
 
-        var draft = OpenAiReplyGenerator.ParseDraft("m1", "你在吗", content, tones);
+        var candidates = OpenAiReplyGenerator.ParseCandidates(content, tones);
 
-        Assert.Single(draft.Groups);
-        Assert.Equal(2, draft.Groups[0].Candidates.Count);
-        Assert.Equal("稳妥", draft.Groups[0].Candidates[0].Style);
-        Assert.Contains("现在看", draft.Groups[0].Candidates[0].Text);
+        Assert.Equal(2, candidates.Count);
+        Assert.Equal("高情商话术", candidates[0].ToneName);
+        Assert.Contains("现在看", candidates[0].Text);
+        Assert.Equal("理科直男", candidates[1].ToneName);
     }
 
     [Fact]
-    public void ParseDraft_ToleratesCodeFencesAndGarbage()
+    public void ParseCandidates_ToleratesCodeFencesAndGarbage()
     {
         var tones = new[] { new Tone("自然接话", "自然") };
-        var fenced = "```json\n{\"groups\":[{\"tone\":\"自然接话\",\"replies\":[{\"text\":\"哈哈好\"}]}]}\n```";
+        var fenced = "```json\n{\"choices\":[{\"text\":\"哈哈好\"}]}\n```";
 
-        var draft = OpenAiReplyGenerator.ParseDraft("m1", "x", fenced, tones);
+        var candidates = OpenAiReplyGenerator.ParseCandidates(fenced, tones);
 
-        Assert.Single(draft.Groups);
-        Assert.Equal("哈哈好", draft.Groups[0].Candidates[0].Text);
+        Assert.Single(candidates);
+        Assert.Equal("哈哈好", candidates[0].Text);
+        Assert.Equal("自然接话", candidates[0].ToneName);   // tone falls back to the first configured tone
 
-        var broken = OpenAiReplyGenerator.ParseDraft("m2", "x", "not json", tones);
-        Assert.Empty(broken.Groups);
+        Assert.Empty(OpenAiReplyGenerator.ParseCandidates("not json", tones));
+    }
+
+    [Fact]
+    public void MaxChoices_IsFour()
+    {
+        Assert.Equal(4, OpenAiReplyGenerator.MaxChoices);
     }
 }

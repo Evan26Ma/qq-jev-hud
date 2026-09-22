@@ -14,6 +14,7 @@
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="BrandBrush" Color="{StaticResource BrandColor}" />
     <SolidColorBrush x:Key="BarTrackBrush" Color="{StaticResource BarTrackColor}" />
     <SolidColorBrush x:Key="BarFillBrush" Color="{StaticResource BrandColor}" />
     <SolidColorBrush x:Key="BarFillMutedBrush" Color="{StaticResource BarFillMutedColor}" />

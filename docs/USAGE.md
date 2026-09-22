@@ -11,15 +11,16 @@ The complete user manual: installation, configuration, daily use, settings refer
 - [1. Install](#1-install)
 - [2. Configure API keys](#2-configure-api-keys)
 - [3. Launch](#3-launch)
-- [4. Daily use](#4-daily-use)
-- [5. Reading the judgment card](#5-reading-the-judgment-card)
-- [6. Candidate replies](#6-candidate-replies)
-- [7. Contact background cards](#7-contact-background-cards)
-- [8. Relationship modes](#8-relationship-modes)
-- [9. Settings reference](#9-settings-reference)
-- [10. Privacy](#10-privacy)
-- [11. Troubleshooting](#11-troubleshooting)
-- [12. FAQ](#12-faq)
+- [4. Home screen](#4-home-screen)
+- [5. Daily use](#5-daily-use)
+- [6. Reading the judgment card](#6-reading-the-judgment-card)
+- [7. The choice panel: pick a reply by its outcome](#7-the-choice-panel-pick-a-reply-by-its-outcome)
+- [8. Contact background cards](#8-contact-background-cards)
+- [9. Relationship modes](#9-relationship-modes)
+- [10. Settings reference](#10-settings-reference)
+- [11. Privacy](#11-privacy)
+- [12. Troubleshooting](#12-troubleshooting)
+- [13. FAQ](#13-faq)
 
 ---
 
@@ -119,7 +120,24 @@ $exe = ".\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe"
 
 ---
 
-## 4. Daily use
+## 4. Home screen
+
+Launching opens the **home screen** (tray → 打开主界面). It is the app's introduction and readiness check:
+
+- A one-line explanation of what the tool does, plus live status
+- **开始使用** — a 4-step checklist, each with a tick and a "go configure / start" button:
+  1. Configure the judgment service (Jev)
+  2. Configure candidate replies (optional)
+  3. Open a QQ chat window (QQ is detected automatically)
+  4. Start analysis
+- **它能做什么** — each capability in one line
+- **先看看效果** — renders a sample judgment card / choice panel (**no QQ, no network**)
+
+Closing the home screen does not quit the app; it keeps running in the tray.
+
+---
+
+## 5. Daily use
 
 1. Open QQ and go to the chat you want to watch
 2. Tray → **自动分析已开启** (start analysis)
@@ -149,7 +167,7 @@ $exe = ".\src\QQJevHud\bin\Debug\net8.0-windows10.0.19041.0\QQJevHud.exe"
 
 ---
 
-## 5. Reading the judgment card
+## 6. Reading the judgment card
 
 The card floats over the QQ window and is mouse-transparent (never blocks clicks or steals focus). Read it bottom-up:
 
@@ -210,43 +228,69 @@ When space is tight the app tries, in order: **below the message** → **beside 
 
 ---
 
-## 6. Candidate replies
+## 7. The choice panel: pick a reply by its outcome
 
-Alongside the judgment card, the **reply panel** opens (reopen it any time from tray → 候选回复…).
+When a new message arrives you get **one panel** — judgment and replies in the same place, no window
+juggling. Each option previews **what it would lead to**, like a visual novel's choice screen.
 
 ```
 ┌──────────────────────────────────────────┐
-│ 对方说                                    │
-│ 你今天怎么都没理我？                       │
+│ 零                                        │  ← who said it
+│ 我昨天买的M7五级弹，4400一发，怕是有点难赚   │  ← what they said
+│ ────────────────────────────────────────  │
+│ ★ 真实意图  自然分享 54%  表达情绪 28%      │  ← Jev's read
+│ ★ 怎么回    轻松接话 67%  先问清楚 18%      │
+│ 建议 轻松接话，别把话题聊死      低风险 2/10 │
 │                                          │
-│ [重新生成]  已生成 6 条候选 · 发送由你      │
+│ [重新生成]  已给出 4 个选择 · 点击即填入   │
 │                                          │
-│ 高情商话术                                 │
-│   稳妥  抱歉，今天一直在忙…   [复制][填入 QQ]│
-│   有个性 是我疏忽了，先说说…   [复制][填入 QQ]│
-│ 自然接话                                   │
-│   ...                                     │
+│ ① 理科直男                                │
+│   确实贵，你是想囤还是自己用？              │
+│   → 满意、顺利接住 58%  低风险             │  ← Jev's predicted outcome
+│ ② 阴阳怪气  → 被安抚、情绪缓和 62%  低风险   │
+│ ③ 高情商话术 …                            │
+│ ④ 自然接话  → 觉得被敷衍 41%  需要留意      │
 └──────────────────────────────────────────┘
 ```
 
-### The two buttons
+### Every option carries its predicted outcome
 
-| Button | Behaviour |
+This is the key difference from a plain reply assistant: instead of handing you text and leaving you
+to guess which is good, **Jev predicts how the other person would react** to each one — with a risk level.
+
+| Predicted reaction | Meaning |
 | --- | --- |
-| **复制** (Copy) | Copies to the clipboard — paste it anywhere yourself |
-| **填入 QQ** (Fill into QQ) | Brings QQ forward and **pastes** into the input box — **never presses Enter**; you review and send |
+| 被安抚、情绪缓和 | They feel understood; their mood improves |
+| 满意、顺利接住 | They accept it and the conversation flows on |
+| 无明显变化 | They react flatly; the topic continues |
+| 觉得被敷衍 | They feel the answer was perfunctory |
+| 可能更不满 | They may get more upset — it could escalate |
 
-> "Fill into QQ" needs QQ to be focusable. If it can't focus QQ it **falls back to copying** and tells you to `Ctrl+V` manually — it never claims success falsely.
+### Ordering
 
-### Built-in tones
+Options are ranked by **"most likely to go well"**, not by raw probability: a good reaction first
+(soothe/land it > neutral > brushed-off/upset), then lower risk, then probability. So "soothed, 55%"
+ranks above "brushed off, 70%".
 
-Each tone produces **2 candidates**: one **safe** (impeccable, low-risk) and one **on-character** (more vivid).
+### Click to fill it in
+
+**Click any option** → the text is filled into QQ's input box. It **never sends**.
+
+If QQ can't be focused it **falls back to copying** and tells you to paste with `Ctrl+V` — it never claims success falsely.
+
+### Regenerate
+
+Not happy with the set? Hit **重新生成** for a fresh batch from different tone angles.
+
+### Tones (the writing voice)
+
+Ten built-ins; each round picks different angles to write 4 distinct candidates:
 
 `高情商话术` `自然接话` `温柔体贴` `稳如老狗` `拒绝加班` `卑微乙方` `职场黑话` `理科直男` `阴阳怪气` `已读乱回`
 
-### Custom tones
+**Which ones are active**: Settings → 候选回复 → **启用的话术**, comma-separated. Default `高情商话术,自然接话,稳如老狗`.
 
-Settings → 候选回复 → **自定义话术**, format `name=description|name=description`:
+**Custom**: in the same section, **自定义话术**, format `name=description|name=description`:
 
 ```
 温柔一点=先回应对方感受，再自然接话，不说教
@@ -255,13 +299,11 @@ Settings → 候选回复 → **自定义话术**, format `name=description|name
 
 A custom tone with the same name overrides the built-in one.
 
-### Choosing active tones
-
-Fill tone names into **启用的话术**, comma-separated. Default: `高情商话术,自然接话,稳如老狗`. More tones = more generated text and a slower round trip.
+> Judgments and replies are **probabilistic references**, not facts. You still make the call.
 
 ---
 
-## 7. Contact background cards
+## 8. Contact background cards
 
 Write background notes for a contact or group and both the judgment and the candidate replies will use them — **the single most effective accuracy improvement**.
 
@@ -283,7 +325,7 @@ The filename must match the chat title shown in QQ. This folder is never committ
 
 ---
 
-## 8. Relationship modes
+## 9. Relationship modes
 
 Settings → 关系模式:
 
@@ -296,7 +338,7 @@ Switching modes changes both the judgment focus and how risk is framed.
 
 ---
 
-## 9. Settings reference
+## 10. Settings reference
 
 Tray → **设置…**
 
@@ -336,7 +378,7 @@ Launch at login, view diagnostic log, hotkey reference.
 
 ---
 
-## 10. Privacy
+## 11. Privacy
 
 | Item | Detail |
 | --- | --- |
@@ -352,7 +394,7 @@ It does **not**: inject into QQ, hook it, modify it, read QQ's database, or send
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 Start with the diagnostic log:
 
@@ -381,7 +423,7 @@ The overlay is **mouse-transparent**: it doesn't block clicks or steal focus. Hi
 
 ---
 
-## 12. FAQ
+## 13. FAQ
 
 **Does it upload my chat history?**
 Only **the current message + ~10 recent visible messages**, and only when a new message arrives while analysis is on. No history is stored, no screenshots are written to disk.

@@ -20,6 +20,7 @@ public sealed class HudController : IAsyncDisposable
     private readonly ContactNoteStore _noteStore = new();
     private AppSettings _settings = AppSettings.Default;
     private OpenAiReplyGenerator? _replyGenerator;
+    private readonly CandidateEvaluator _evaluator = new();
     private IReadOnlyList<ChatMessage> _lastContext = Array.Empty<ChatMessage>();
     private string? _contactNotes;
     private string? _contactName;
@@ -28,8 +29,8 @@ public sealed class HudController : IAsyncDisposable
     private static bool IsGroupChat(string? sessionTitle) =>
         !string.IsNullOrWhiteSpace(sessionTitle) && System.Text.RegularExpressions.Regex.IsMatch(sessionTitle, @"[(（]\s*\d+\s*[)）]");
 
-    /// <summary>Raised when a fresh set of candidate replies is ready for the newest message.</summary>
-    public event Action<ReplyDraft>? ReplyDraftReady;
+    /// <summary>Raised with the complete choice set (judgment + candidates + predicted outcomes).</summary>
+    public event Action<ChoiceSet>? ChoiceSetReady;
     private readonly FrameDebouncer _frameDebouncer = new(TimeSpan.FromMilliseconds(950));
     private readonly DispatcherTimer _timer;
     private readonly HashSet<string> _seenIncoming = new(StringComparer.Ordinal);
@@ -117,16 +118,16 @@ public sealed class HudController : IAsyncDisposable
         _overlay.Opacity = _settings.CardOpacity;
     }
 
-    /// <summary>Regenerate candidates for a message (the reply panel's "重新生成").</summary>
-    public void RegenerateReplies(ChatMessage message) => _ = GenerateRepliesAsync(message, _lastContext);
+    /// <summary>Redrafts the choices for a message (the panel's "重新生成").</summary>
+    public void RegenerateReplies(ChatMessage message) => _ = BuildChoicesAsync(message, _lastContext);
 
     /// <summary>
-    /// "话我帮你想，发送你来定" — drafts candidate replies for a new incoming message in the
-    /// background and hands them to the reply panel. Never blocks the analysis loop.
+    /// The heart of the flow: judge the message, draft a few candidate replies, then ask Jev what each
+    /// one would lead to — and hand the whole thing to the choice panel as one set. Never blocks the
+    /// analysis loop.
     /// </summary>
-    private async Task GenerateRepliesAsync(ChatMessage message, IReadOnlyList<ChatMessage> context)
+    private async Task BuildChoicesAsync(ChatMessage message, IReadOnlyList<ChatMessage> context, DecisionCard? known = null)
     {
-        if (!_settings.GenerateReplies || _replyGenerator is null) return;
         _lastContext = context;
         try
         {
@@ -134,12 +135,34 @@ public sealed class HudController : IAsyncDisposable
             var safeContext = _settings.RedactSensitive
                 ? context.Select(item => item with { Text = SensitiveRedactor.Redact(item.Text) }).ToArray()
                 : context;
-            var draft = await _replyGenerator.GenerateAsync(safeMessage, safeContext, _settings.ResolveTones(), _contactNotes, CancellationToken.None);
-            if (draft.Groups.Count > 0) ReplyDraftReady?.Invoke(draft);
+
+            var card = known ?? await _decisions.AnalyzeAsync(safeMessage, safeContext, CancellationToken.None, _contactNotes);
+            if (!_settings.GenerateReplies || _replyGenerator is null)
+            {
+                ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
+                return;
+            }
+
+            var drafts = await _replyGenerator.GenerateAsync(safeMessage, safeContext, _settings.ResolveTones(), _contactNotes, CancellationToken.None);
+            if (drafts.Count == 0)
+            {
+                ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, Array.Empty<ChoiceItem>()));
+                return;
+            }
+
+            // Sharpen each candidate with its predicted consequence before showing them.
+            var outcomes = await _evaluator.EvaluateAsync(safeMessage, safeContext,
+                drafts.Select(draft => draft.Text).ToArray(), _contactNotes, CancellationToken.None);
+            var choices = drafts.Select((draft, index) => new ChoiceItem(
+                index + 1,
+                draft.Text,
+                draft.ToneName,
+                index < outcomes.Count ? outcomes[index] : null)).ToArray();
+            ChoiceSetReady?.Invoke(new ChoiceSet(message.Id, message.Text, message.Sender, card, choices));
         }
         catch
         {
-            // reply generation must never disturb the HUD
+            // choices are an enhancement; never disturb the HUD
         }
     }
 
@@ -237,7 +260,8 @@ public sealed class HudController : IAsyncDisposable
                     : context;
                 var decision = await _decisions.AnalyzeAsync(safeMessage, safeContext, CancellationToken.None, _contactNotes);
                 _cards[message.Id] = (message, decision);
-                _ = GenerateRepliesAsync(message, context);
+                // Judgment and choices share one panel, so build the whole set in the background.
+                _ = BuildChoicesAsync(message, context, decision);
             }
 
             var visible = incoming.Select(message => message.Id).ToHashSet(StringComparer.Ordinal);

@@ -24,6 +24,9 @@ public sealed class HudController : IAsyncDisposable
     private IReadOnlyList<ChatMessage> _lastContext = Array.Empty<ChatMessage>();
     private string? _contactNotes;
     private string? _contactName;
+    private string? _readRegionKey;
+    private ScreenRect? _readRegion;
+    private ScreenRect _readRegionOffset;
 
     /// <summary>Group chats carry a member count in the title (e.g. "群名 (288)"); 1:1 chats do not.</summary>
     private static bool IsGroupChat(string? sessionTitle) =>
@@ -40,6 +43,7 @@ public sealed class HudController : IAsyncDisposable
     private bool _baselineTaken;
     private bool _polling;
     private bool _enabled;
+    private bool _blockedByOwnWindow;
 
     public HudController(OverlayWindow overlay)
     {
@@ -51,6 +55,33 @@ public sealed class HudController : IAsyncDisposable
 
     public bool IsEnabled => _enabled;
     public event Action<string>? StatusChanged;
+
+    /// <summary>
+    /// True while one of the HUD's own windows (home / settings / calibration) is on screen. Reading
+    /// pauses then: the capture would otherwise include that window and the detector would mistake its
+    /// white panels for chat bubbles.
+    /// </summary>
+    public bool IsBlockedByOwnWindow
+    {
+        get => _blockedByOwnWindow;
+        set
+        {
+            if (_blockedByOwnWindow == value) return;
+            _blockedByOwnWindow = value;
+            if (value)
+            {
+                _overlay.ClearCards();
+                _overlay.HideRecognitionFrame();
+                SetStatus("HUD 窗口打开中；关闭后继续分析。");
+            }
+            else
+            {
+                // The frame is clean again: re-detect instead of trusting the stale region.
+                _readRegionKey = null;
+                SetStatus("继续分析…");
+            }
+        }
+    }
 
     public async Task StartCurrentChatAsync()
     {
@@ -176,6 +207,8 @@ public sealed class HudController : IAsyncDisposable
     private async Task PollAsync()
     {
         if (!_enabled || _polling) return;
+        // A HUD window on screen would be captured along with QQ and corrupt both detection and OCR.
+        if (_blockedByOwnWindow) return;
         _polling = true;
         try
         {
@@ -204,8 +237,10 @@ public sealed class HudController : IAsyncDisposable
                 RecordRuntimeState("capture-unavailable");
                 return;
             }
-            var calibration = _calibrationStore.Load();
-            var historyBounds = calibration.ToScreenRect(frame.WindowBounds);
+            // The region actually read: the user's own calibration when they made one, otherwise the
+            // message column detected from the frame (bubbles are brighter than the chat background),
+            // so the box hugs the real conversation instead of an arbitrary fraction of the window.
+            var historyBounds = ResolveReadRegion(frame, _sessionId);
             var history = BitmapTools.Crop(frame.Image, frame.WindowBounds, historyBounds);
 
             // Show what is actually being read: the header while identifying the session, then the
@@ -220,11 +255,13 @@ public sealed class HudController : IAsyncDisposable
                 return;
             }
 
+            // The chat title sits in the strip between the window top and the message area, inside the
+            // same horizontal span as the messages — derived from the read region, not fixed fractions.
             var headerBounds = new ScreenRect(
-                frame.WindowBounds.Left + frame.WindowBounds.Width * 0.24,
-                frame.WindowBounds.Top + 4,
-                frame.WindowBounds.Width * 0.72,
-                Math.Min(62, frame.WindowBounds.Height * 0.12));
+                historyBounds.Left,
+                frame.WindowBounds.Top,
+                historyBounds.Width,
+                Math.Max(40, historyBounds.Top - frame.WindowBounds.Top));
             var newSessionId = "s-" + BitmapTools.FrameSignature(BitmapTools.Crop(frame.Image, frame.WindowBounds, headerBounds))[..16];
             if (!string.Equals(_sessionId, newSessionId, StringComparison.Ordinal))
             {
@@ -319,7 +356,30 @@ public sealed class HudController : IAsyncDisposable
     }
 
     /// <summary>
-    /// Reads the chat header (best effort) to find the contact name, then loads that contact's
+    /// The region to read, in screen coordinates. Detection walks the whole frame, so the result is
+    /// cached per session and window size; a moved or resized window re-runs it.
+    /// </summary>
+    private ScreenRect ResolveReadRegion(CapturedFrame frame, string? sessionId)
+    {
+        if (_calibrationStore.IsUserConfigured)
+            return _calibrationStore.Load().ToScreenRect(frame.WindowBounds);
+
+        var key = $"{sessionId}|{frame.WindowBounds.Width:0}x{frame.WindowBounds.Height:0}";
+        if (_readRegionKey == key && _readRegion is { } cached)
+            return cached with { X = frame.WindowBounds.Left + _readRegionOffset.X, Y = frame.WindowBounds.Top + _readRegionOffset.Y };
+
+        var region = ChatAreaDetector.Detect(frame.Image, frame.WindowBounds);
+        _readRegionKey = key;
+        _readRegion = region;
+        _readRegionOffset = new ScreenRect(region.Left - frame.WindowBounds.Left, region.Top - frame.WindowBounds.Top, 0, 0);
+        RecordRuntimeState(
+            $"read-region:{region.Width:0}x{region.Height:0}" +
+            $"@({region.Left - frame.WindowBounds.Left:0},{region.Top - frame.WindowBounds.Top:0})" +
+            $"/win{frame.WindowBounds.Width:0}x{frame.WindowBounds.Height:0}");
+        return region;
+    }
+
+    /// <summary>Reads the chat header (best effort) to find the contact name, then loads that contact's
     /// background note from notes/&lt;联系人&gt;.md. Failures are silent — notes are an enhancement.
     /// </summary>
     private async Task<string?> LoadContactNotesAsync(CapturedFrame frame)
@@ -333,11 +393,14 @@ public sealed class HudController : IAsyncDisposable
     {
         try
         {
+            var region = _calibrationStore.IsUserConfigured
+                ? _calibrationStore.Load().ToScreenRect(frame.WindowBounds)
+                : ChatAreaDetector.Detect(frame.Image, frame.WindowBounds);
             var headerBounds = new ScreenRect(
-                frame.WindowBounds.Left + frame.WindowBounds.Width * 0.26,
-                frame.WindowBounds.Top + 4,
-                frame.WindowBounds.Width * 0.44,
-                Math.Min(46, frame.WindowBounds.Height * 0.09));
+                region.Left,
+                frame.WindowBounds.Top,
+                region.Width,
+                Math.Max(40, region.Top - frame.WindowBounds.Top));
             var crop = BitmapTools.Crop(frame.Image, frame.WindowBounds, headerBounds);
             var lines = await _ocr.RecognizeAsync(crop, CancellationToken.None);
             return lines

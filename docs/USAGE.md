@@ -286,12 +286,20 @@ underneath; if QQ can't be focused it **falls back to copying** and tells you to
 
 ### The green frame shows what is being read
 
-The region currently being read is outlined with a **green frame** labelled 「正在识别此区域」, so it is
-never a black box.
+The region being read is outlined in **green**: it clears the session list on the left, starts below the
+chat header, ends above the input box, and runs to the chat panel's right edge — the real conversation,
+not a fixed fraction of the window.
 
-- While identifying the session the frame sits on the header, then moves to the chat area
+- While identifying the session the frame sits on the header, then moves to the messages
 - When there is no room for a card, **the message itself is outlined in green** (far clearer than the old dot)
 - Turn it off under Settings → 卡片显示 → 「用绿框标出正在识别的区域」
+
+> The region is **detected from the picture** (message bubbles are brighter than the chat background, so
+> it works in light and dark themes) — no manual calibration needed. If a particular chat is detected
+> poorly, tray → 重新校准聊天区域 lets you box it yourself.
+>
+> **Note**: reading pauses while the home/settings window is open (that window would otherwise be
+> captured), and resumes when you close it.
 
 ### The card travels with the chat window
 

@@ -55,8 +55,9 @@ public partial class MainWindow : Window, IDisposable
             return;
         }
         _homeWindow = new HomeWindow(_controller, ShowSettings);
-        _homeWindow.Closed += (_, _) => _homeWindow = null;
+        _homeWindow.Closed += (_, _) => { _homeWindow = null; UpdateOwnWindowBlock(); };
         _homeWindow.Show();
+        UpdateOwnWindowBlock();
     }
 
     private void ShowSettings()
@@ -67,9 +68,15 @@ public partial class MainWindow : Window, IDisposable
             return;
         }
         _settingsWindow = new SettingsWindow(_controller, new SettingsStore().Load());
-        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; _homeWindow?.Refresh(); };
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; _homeWindow?.Refresh(); UpdateOwnWindowBlock(); };
         _settingsWindow.Show();
+        UpdateOwnWindowBlock();
     }
+
+    /// <summary>Pauses reading while a HUD window covers QQ, so the capture stays clean.</summary>
+    private void UpdateOwnWindowBlock() =>
+        _controller.IsBlockedByOwnWindow =
+            _homeWindow is { IsVisible: true } || _settingsWindow is { IsVisible: true };
 
     private Forms.NotifyIcon CreateTrayIcon()
     {
